@@ -314,6 +314,27 @@
             .msg {
                 max-width: 90%;
             }
+
+            .chat-footer-note {
+                padding: 8px 12px;
+                font-size: 0.7rem;
+            }
+        }
+
+        .chat-footer-note {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #64748b;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.95);
+            border-top: 1px solid #f1f5f9;
+            line-height: 1.4;
+        }
+
+        .chat-footer-note a {
+            color: #004e89;
+            font-weight: 700;
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -356,6 +377,10 @@
                 </svg>
             </button>
         </div>
+        <div class="chat-footer-note">
+            Aplican <a href="terminos.html" target="_blank">Términos y condiciones</a>. Al participar autorizas el
+            tratamiento de tus datos personales.
+        </div>
     </div>
 
     <script>
@@ -383,15 +408,24 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        function formatText(text) {
+            if (!text) return "";
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/_(.*?)_/g, '<em>$1</em>')
+                .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color: inherit; font-weight: bold; text-decoration: underline;">$1</a>')
+                .replace(/\n/g, '<br>');
+        }
+
         function addMessage(text, type, imgUrl = null) {
             const div = document.createElement('div');
             div.className = `msg msg-${type}`;
             if (imgUrl) {
                 div.classList.add('msg-img');
-                div.innerHTML = (text ? text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') + '<br>' : '') +
+                div.innerHTML = (text ? formatText(text) + '<br>' : '') +
                     `<img src="${imgUrl}" alt="Ticket">`;
             } else {
-                div.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                div.innerHTML = formatText(text);
             }
             chatMessages.appendChild(div);
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -440,7 +474,7 @@
                     setTimeout(() => {
                         typing.remove();
                         addMessage(
-                            `¡Hola! 👋 Estás participando en el sorteo **${sorteos[0].nombre_sorteo}**.\n\nPor favor, indícame tu **número de cédula** para comenzar.`,
+                            `¡Hola! 👋 Estás participando en el sorteo **${sorteos[0].nombre_sorteo}**.\n\nPor favor, indícame tu **número de cédula** para comenzar.\n\n_Al continuar, confirmas que has leído nuestros [Términos y condiciones](terminos.html)._`,
                             "bot"
                         );
                     }, 1000);

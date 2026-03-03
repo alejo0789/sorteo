@@ -55,6 +55,11 @@ def read_index():
 def read_dashboard():
     return FileResponse("dashboard.html")
 
+@app.get("/terminos")
+@app.get("/terminos.html")
+def read_terminos():
+    return FileResponse("terminos.html")
+
 # Enable CORS for frontend interaction
 app.add_middleware(
     CORSMiddleware,
