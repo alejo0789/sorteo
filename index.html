@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <title>Registro Sorteos - Acertemos</title>
     <link rel="stylesheet" href="acertemos_premium_ui/resources/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -64,6 +64,14 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+        }
+
+        /* Spacer: pushes messages to the bottom when chat is not full (like WhatsApp).
+           As messages accumulate and overflow, this shrinks to 0 automatically. */
+        .chat-messages::before {
+            content: '';
+            flex: 1 1 auto;
+            display: block;
         }
 
         .msg {
@@ -285,18 +293,14 @@
                 z-index: 100;
             }
 
-            /* Fixed layout so the footer is always visible above the keyboard */
+            /* chat-wrapper top/bottom are set dynamically in JS */
             .chat-wrapper {
                 position: fixed;
-                top: 60px;
                 left: 0;
                 right: 0;
-                bottom: 0;
-                height: auto !important;
                 margin: 0;
                 border-radius: 0;
                 border: none;
-                transition: bottom 0.1s ease;
             }
 
             .chat-messages {
@@ -388,6 +392,8 @@
             }
             chatMessages.appendChild(div);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            // Guarantee visibility on mobile even with keyboard open
+            setTimeout(() => div.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
         }
 
         function showTyping() {
@@ -642,20 +648,41 @@
         sendBtn.onclick = handleSend;
         chatInput.onkeydown = (e) => { if (e.key === "Enter") handleSend(); };
 
-        // Mobile keyboard fix: when keyboard opens, push the chat-wrapper up by
-        // exactly the keyboard height so the footer is always above the keyboard.
-        if (window.visualViewport && window.innerWidth <= 600) {
+        // ---- Mobile layout: dynamic positioning ----
+        // Measures header height in real-time and adjusts the chat-wrapper
+        // so it always fills the space between header and top of keyboard.
+        function setupMobileLayout() {
+            const isMobile = window.matchMedia('(max-width: 600px)').matches;
+            if (!isMobile) return;
+
             const wrapper = document.querySelector('.chat-wrapper');
-            const onViewportChange = () => {
-                const keyboardHeight = window.innerHeight - window.visualViewport.height;
-                wrapper.style.bottom = keyboardHeight + 'px';
+            const header = document.querySelector('.brand-header');
+
+            function updateLayout() {
+                const headerH = header.offsetHeight;
+                const vv = window.visualViewport;
+                // keyboardHeight = space between bottom of visual viewport and bottom of layout viewport
+                const kbHeight = vv
+                    ? Math.max(0, window.innerHeight - vv.offsetTop - vv.height)
+                    : 0;
+
+                wrapper.style.top = headerH + 'px';
+                wrapper.style.bottom = kbHeight + 'px';
+                wrapper.style.height = 'auto';
+
                 chatMessages.scrollTop = chatMessages.scrollHeight;
-            };
-            window.visualViewport.addEventListener('resize', onViewportChange);
-            window.visualViewport.addEventListener('scroll', onViewportChange);
+            }
+
+            updateLayout();
+            window.addEventListener('resize', updateLayout);
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', updateLayout);
+                window.visualViewport.addEventListener('scroll', updateLayout);
+            }
         }
 
-        window.onload = init;
+        window.onload = () => { init(); setupMobileLayout(); };
     </script>
 </body>
 
