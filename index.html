@@ -359,7 +359,10 @@
     </div>
 
     <script>
-        const API_URL = "";
+        // Auto-detect API root based on the current location
+        const API_URL = window.location.pathname.includes('/registro_sorteos/')
+            ? "/registro_sorteos/"
+            : "";
         const chatMessages = document.getElementById('chatMessages');
         const chatInput = document.getElementById('chatInput');
         const sendBtn = document.getElementById('sendBtn');
