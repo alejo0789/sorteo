@@ -427,14 +427,23 @@
                 const identity = JSON.parse(identityStr);
                 if (!identity?.token) throw new Error('No token');
 
-                // The email is stored as identity.correo OR identity.data depending on
-                // the Saman version — check both fields, case-insensitive.
-                const email = (identity.correo || identity.data || '').toLowerCase().trim();
+                // Saman identity structure is complex — checking all common locations
+                const rawEmail = identity.correo ||
+                    identity.data ||
+                    (identity.usuario && identity.usuario.email) ||
+                    (identity.usuario && identity.usuario.notificaciones && identity.usuario.notificaciones.data) ||
+                    '';
+
+                const email = rawEmail.toLowerCase().trim();
                 const allowed = ALLOWED_EMAILS.map(e => e.toLowerCase());
 
-                if (!allowed.includes(email)) throw new Error('Not authorized');
+                if (!allowed.includes(email)) {
+                    console.error("Acceso denegado para:", email);
+                    throw new Error('Not authorized: ' + email);
+                }
 
             } catch (e) {
+                console.warn("Saman Auth Guard - Redirigiendo:", e.message);
                 window.location.href = 'https://saman.lafortuna.com.co';
             }
         })();
