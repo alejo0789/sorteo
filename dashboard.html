@@ -441,7 +441,7 @@
         // ─────────────────────────────────────────────────────────────────────
 
         async function loadSorteos() {
-            const res = await fetch(`${API_URL}/sorteos?active_only=false`);
+            const res = await fetch(`${API_URL}sorteos?active_only=false`);
             allSorteos = await res.json();
             const filter = document.getElementById('sorteoFilter');
 
@@ -460,14 +460,14 @@
             const sorteoId = document.getElementById('sorteoFilter').value;
 
             // 1. Load Stats
-            const statsRes = await fetch(`${API_URL}/dashboard/stats` + (sorteoId ? `?sorteo_id=${sorteoId}` : ''));
+            const statsRes = await fetch(`${API_URL}dashboard/stats` + (sorteoId ? `?sorteo_id=${sorteoId}` : ''));
             const stats = await statsRes.json();
             document.getElementById('totalUsers').textContent = stats.total_usuarios;
             document.getElementById('totalRegistros').textContent = stats.total_registros;
             document.getElementById('regContext').textContent = sorteoId ? "Para este sorteo" : "Total acumulado";
 
             // 2. Load Table
-            const usersRes = await fetch(`${API_URL}/dashboard/users` + (sorteoId ? `?sorteo_id=${sorteoId}` : ''));
+            const usersRes = await fetch(`${API_URL}dashboard/users` + (sorteoId ? `?sorteo_id=${sorteoId}` : ''));
             const users = await usersRes.json();
             const tbody = document.getElementById('userTableBody');
             tbody.innerHTML = '';
@@ -539,7 +539,7 @@
 
         async function viewReceipts(cedula) {
             const sorteoId = document.getElementById('sorteoFilter').value;
-            const res = await fetch(`${API_URL}/dashboard/user-receipts/${cedula}` + (sorteoId ? `?sorteo_id=${sorteoId}` : ''));
+            const res = await fetch(`${API_URL}dashboard/user-receipts/${cedula}` + (sorteoId ? `?sorteo_id=${sorteoId}` : ''));
             const receipts = await res.json();
 
             const list = document.getElementById('receiptsList');

@@ -36,7 +36,10 @@ try:
 except Exception as e:
     print(f"[Migration] Skipped or error: {e}")
 
-app = FastAPI(title="Acertemos Sorteos API")
+app = FastAPI(
+    title="Acertemos Sorteos API",
+    root_path="/registro_sorteos"
+)
 
 # Ensure assets directory exists and mount it
 os.makedirs("assets/receipts", exist_ok=True)
@@ -81,7 +84,7 @@ async def upload_receipt(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    return {"url": f"/assets/receipts/{filename}"}
+    return {"url": f"assets/receipts/{filename}"}
 
 @app.post("/register", response_model=schemas.RegistroResponse)
 def register_to_sorteo(data: schemas.RegistroCreate, db: Session = Depends(get_db)):

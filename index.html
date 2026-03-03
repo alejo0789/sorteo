@@ -429,7 +429,7 @@
 
         async function init() {
             try {
-                const res = await fetch(`${API_URL}/sorteos`);
+                const res = await fetch(`${API_URL}sorteos`);
                 const sorteos = await res.json();
                 if (sorteos.length > 0) {
                     sorteoId = sorteos[0].id;
@@ -465,7 +465,7 @@
                     val = val.replace(/[.,\s]/g, "");
                     userData.cedula = val;
 
-                    const res = await fetch(`${API_URL}/check-user/${val}`);
+                    const res = await fetch(`${API_URL}check-user/${val}`);
                     const user = await res.json();
                     typing.remove();
 
@@ -576,7 +576,7 @@
             const typing = showTyping();
 
             try {
-                const uploadRes = await fetch(`${API_URL}/upload-receipt`, { method: 'POST', body: formData });
+                const uploadRes = await fetch(`${API_URL}upload-receipt`, { method: 'POST', body: formData });
                 const uploadData = await uploadRes.json();
                 typing.remove();
 
@@ -592,7 +592,7 @@
 
                 // Submit registration
                 const typing2 = showTyping();
-                const regRes = await fetch(`${API_URL}/register`, {
+                const regRes = await fetch(`${API_URL}register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
