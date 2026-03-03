@@ -428,10 +428,10 @@
                 if (!identity?.token) throw new Error('No token');
 
                 // Saman identity structure is complex — checking all common locations
-                const rawEmail = identity.correo ||
+                const rawEmail = (identity.usuario && identity.usuario.notificaciones && identity.usuario.notificaciones.data) ||
+                    identity.correo ||
                     identity.data ||
                     (identity.usuario && identity.usuario.email) ||
-                    (identity.usuario && identity.usuario.notificaciones && identity.usuario.notificaciones.data) ||
                     '';
 
                 const email = rawEmail.toLowerCase().trim();
