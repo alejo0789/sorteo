@@ -407,6 +407,39 @@
         const API_URL = "";
         let allSorteos = [];
 
+        // ── Saman Auth Guard ──────────────────────────────────────────────────
+        // Allowed emails for production. Localhost is always bypassed.
+        const ALLOWED_EMAILS = [
+            "communitymanager@acertemos.com",
+            "iderdecomunicaciones@certemos.com",
+            "ingenieroia@acertemos.com"
+        ];
+
+        (function checkSamanAuth() {
+            const host = window.location.hostname;
+            // Bypass on localhost/dev
+            if (host === 'localhost' || host === '127.0.0.1') return;
+
+            try {
+                const identityStr = localStorage.getItem('identity');
+                if (!identityStr) throw new Error('No identity');
+
+                const identity = JSON.parse(identityStr);
+                if (!identity?.token) throw new Error('No token');
+
+                // The email is stored as identity.correo OR identity.data depending on
+                // the Saman version — check both fields, case-insensitive.
+                const email = (identity.correo || identity.data || '').toLowerCase().trim();
+                const allowed = ALLOWED_EMAILS.map(e => e.toLowerCase());
+
+                if (!allowed.includes(email)) throw new Error('Not authorized');
+
+            } catch (e) {
+                window.location.href = 'https://saman.lafortuna.com.co';
+            }
+        })();
+        // ─────────────────────────────────────────────────────────────────────
+
         async function loadSorteos() {
             const res = await fetch(`${API_URL}/sorteos?active_only=false`);
             allSorteos = await res.json();
