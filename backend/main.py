@@ -23,11 +23,13 @@ from sqlalchemy import text, inspect
 def run_migrations():
     with engine.connect() as conn:
         inspector = inspect(engine)
-        # Add telefono column to usuarios if missing
-        existing_cols = [c["name"] for c in inspector.get_columns("usuarios")]
-        if "telefono" not in existing_cols:
-            conn.execute(text("ALTER TABLE usuarios ADD COLUMN telefono VARCHAR"))
-            conn.commit()
+        # Check for our prefixed table
+        t_name = "marketing_clientes_sorteos"
+        if t_name in inspector.get_table_names():
+            existing_cols = [c["name"] for c in inspector.get_columns(t_name)]
+            if "telefono" not in existing_cols:
+                conn.execute(text(f"ALTER TABLE {t_name} ADD COLUMN telefono VARCHAR(255)"))
+                conn.commit()
 
 try:
     run_migrations()

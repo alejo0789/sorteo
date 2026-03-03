@@ -3,7 +3,7 @@ import os
 
 if __name__ == "__main__":
     print("Iniciando Servidor Acertemos...")
-    print("API: http://localhost:8000")
-    print("Documentación (Swagger): http://localhost:8000/docs")
+    print("API: http://localhost:8003")
+    print("Documentación (Swagger): http://localhost:8003/docs")
     # Using the module path
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8003, reload=True)
