@@ -8,3 +8,9 @@ python-dotenv
 alembic
 cors
 python-multipart
+# Google Drive API
+google-api-python-client
+google-auth
+google-auth-httplib2
+google-auth-oauthlib
+cloudinary

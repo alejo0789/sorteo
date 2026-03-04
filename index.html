@@ -397,6 +397,7 @@
         // Flow: cedula → nombre → telefono → registro → comprobante → done
         let step = "cedula";
         let sorteoId = null;
+        let sorteoNombre = "";
         let userData = { cedula: "", nombre: "", telefono: "", comprobante_url: null };
         let pendingRegistro = null;
         let currentFontSize = 15;
@@ -470,6 +471,7 @@
                 const sorteos = await res.json();
                 if (sorteos.length > 0) {
                     sorteoId = sorteos[0].id;
+                    sorteoNombre = sorteos[0].nombre_sorteo;
                     const typing = showTyping();
                     setTimeout(() => {
                         typing.remove();
@@ -613,7 +615,8 @@
             const typing = showTyping();
 
             try {
-                const uploadRes = await fetch(`${API_URL}upload-receipt`, { method: 'POST', body: formData });
+                const uploadUrl = `${API_URL}upload-receipt${sorteoNombre ? `?sorteo_nombre=${encodeURIComponent(sorteoNombre)}` : ''}`;
+                const uploadRes = await fetch(uploadUrl, { method: 'POST', body: formData });
                 const uploadData = await uploadRes.json();
                 typing.remove();
 

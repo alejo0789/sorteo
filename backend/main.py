@@ -7,8 +7,9 @@ from sqlalchemy import func
 from typing import List, Optional
 import datetime
 import os
-import shutil
 import uuid
+
+from backend.cloudinary_service import upload_image_to_cloudinary
 
 from backend.db.session import get_db, engine
 from backend.db import models
@@ -77,16 +78,23 @@ def check_user(cedula: str, db: Session = Depends(get_db)):
     return None
 
 @app.post("/upload-receipt")
-async def upload_receipt(file: UploadFile = File(...)):
-    # Generate unique filename
-    file_extension = os.path.splitext(file.filename)[1]
-    filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = f"assets/receipts/{filename}"
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    return {"url": f"assets/receipts/{filename}"}
+async def upload_receipt(file: UploadFile = File(...), sorteo_nombre: Optional[str] = Query(None)):
+    # Generar nombre único para el archivo
+    file_extension = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
+    filename = f"comprobante_{uuid.uuid4()}{file_extension}"
+
+    # Leer el contenido del archivo en memoria
+    file_bytes = await file.read()
+
+    # Definir la carpeta basado en el sorteo (o 'general' si no viene ninguno)
+    folder_name = f"sorteos/{sorteo_nombre.replace(' ', '_')}" if sorteo_nombre else "sorteos/general"
+
+    try:
+        # Subir a Cloudinary con el folder dinámico
+        public_url = upload_image_to_cloudinary(file_bytes, filename, folder=folder_name)
+        return {"url": public_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error subiendo imagen a Cloudinary: {str(e)}")
 
 @app.post("/register", response_model=schemas.RegistroResponse)
 def register_to_sorteo(data: schemas.RegistroCreate, db: Session = Depends(get_db)):
