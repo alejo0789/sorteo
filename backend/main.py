@@ -161,7 +161,9 @@ def register_to_sorteo(data: schemas.RegistroCreate, db: Session = Depends(get_d
 def get_sorteos(active_only: bool = True, db: Session = Depends(get_db)):
     query = db.query(models.SorteoConfig)
     if active_only:
-        today = datetime.date.today()
+        # Usar hora de Colombia para determinar qué sorteos están activos
+        from backend.db.models import get_colombia_time
+        today = get_colombia_time().date()
         query = query.filter(models.SorteoConfig.activo == True, 
                              models.SorteoConfig.fecha_inicio <= today,
                              models.SorteoConfig.fecha_fin >= today)
