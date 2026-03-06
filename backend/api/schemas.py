@@ -58,6 +58,33 @@ class Registro(BaseModel):
 
 class RegistroResponse(Registro):
     total_tickets: int  # Total tickets registered by this cedula in the sorteo
+    tickets_restantes: int # Tickets remaining for the goal (moto)
+
+# WhatsApp Integration Schemas
+class WhatsAppRegistroCreate(BaseModel):
+    cedula: str
+    nombre: str
+    telefono: str
+    numero_sorteo: str  # This maps to the ticket number
+    url_imagen: str
+
+class WhatsAppRegistroResponse(BaseModel):
+    status: str
+    mensaje: str
+    total_tickets: int
+    tickets_restantes: int
+    cedula: str
+    nombre: str
+
+class WhatsAppUserCheck(BaseModel):
+    exists: bool
+    cedula: Optional[str] = None
+    nombre: Optional[str] = None
+    telefono: Optional[str] = None
+
+class WhatsAppTicketCheck(BaseModel):
+    registered: bool
+    mensaje: str
 
 # Dashboard Schemas
 class DashboardStats(BaseModel):

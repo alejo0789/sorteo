@@ -147,6 +147,10 @@ def register_to_sorteo(data: schemas.RegistroCreate, db: Session = Depends(get_d
         models.RegistroSorteo.sorteo_id == data.sorteo_id
     ).scalar()
 
+    # 6. Calculate remaining tickets for the goal (e.g., 10 for the motorcycle)
+    MOTO_GOAL = 10
+    tickets_restantes = max(0, MOTO_GOAL - total_tickets)
+
     return schemas.RegistroResponse(
         id=new_reg.id,
         cedula=new_reg.cedula,
@@ -154,7 +158,148 @@ def register_to_sorteo(data: schemas.RegistroCreate, db: Session = Depends(get_d
         numero_registro=new_reg.numero_registro,
         comprobante_url=new_reg.comprobante_url,
         fecha_creacion=new_reg.fecha_creacion,
-        total_tickets=total_tickets
+        total_tickets=total_tickets,
+        tickets_restantes=tickets_restantes
+    )
+
+@app.get("/whatsapp/check-user/{telefono}", response_model=schemas.WhatsAppUserCheck)
+def check_user_by_phone(telefono: str, db: Session = Depends(get_db)):
+    # Sanitize phone
+    clean_tel = telefono.replace(" ", "").replace("-", "").replace("(", "").replace(")", "").strip()
+    
+    # Search for user by phone
+    # Note: Search using LIKE if it's stored differently or just exact match
+    user = db.query(models.User).filter(models.User.telefono == clean_tel).first()
+    
+    if user:
+        return schemas.WhatsAppUserCheck(
+            exists=True,
+            cedula=user.cedula,
+            nombre=user.nombre_completo,
+            telefono=user.telefono
+        )
+    return schemas.WhatsAppUserCheck(exists=False)
+
+@app.get("/whatsapp/check-ticket/{numero_sorteo}", response_model=schemas.WhatsAppTicketCheck)
+def check_ticket_registration(numero_sorteo: str, db: Session = Depends(get_db)):
+    # 1. Find the current active sorteo
+    from backend.db.models import get_colombia_time
+    today = get_colombia_time().date()
+    active_sorteo = db.query(models.SorteoConfig).filter(
+        models.SorteoConfig.activo == True,
+        models.SorteoConfig.fecha_inicio <= today,
+        models.SorteoConfig.fecha_fin >= today
+    ).first()
+
+    if not active_sorteo:
+        return schemas.WhatsAppTicketCheck(registered=False, mensaje="No hay sorteos activos.")
+
+    # 2. Check if ticket exists in active sorteo
+    existing_reg = db.query(models.RegistroSorteo).filter(
+        models.RegistroSorteo.sorteo_id == active_sorteo.id,
+        models.RegistroSorteo.numero_registro == numero_sorteo
+    ).first()
+
+    if existing_reg:
+        return schemas.WhatsAppTicketCheck(
+            registered=True, 
+            mensaje=f"El ticket '{numero_sorteo}' ya ha sido registrado anteriormente."
+        )
+    
+    return schemas.WhatsAppTicketCheck(registered=False, mensaje="Ticket disponible para registro.")
+
+@app.post("/whatsapp/register", response_model=schemas.WhatsAppRegistroResponse)
+def register_from_whatsapp(data: schemas.WhatsAppRegistroCreate, db: Session = Depends(get_db)):
+    # Sanitize data
+    data.cedula = data.cedula.replace(".", "").replace(",", "").replace(" ", "").strip()
+    data.telefono = data.telefono.replace(" ", "").replace("-", "").replace("(", "").replace(")", "").strip()
+    
+    # 1. Direct registration from WhatsApp data
+    # Find the current active sorteo automatically
+    from backend.db.models import get_colombia_time
+    today = get_colombia_time().date()
+    active_sorteo = db.query(models.SorteoConfig).filter(
+        models.SorteoConfig.activo == True,
+        models.SorteoConfig.fecha_inicio <= today,
+        models.SorteoConfig.fecha_fin >= today
+    ).first()
+
+    if not active_sorteo:
+        raise HTTPException(status_code=400, detail="No hay sorteos activos en este momento.")
+
+    # 2. Reuse logic to handle user and registration
+    # Check User
+    user = db.query(models.User).filter(models.User.cedula == data.cedula).first()
+    if not user:
+        user = models.User(
+            cedula=data.cedula,
+            nombre_completo=data.nombre,
+            telefono=data.telefono
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        # Update name or phone if provided and different
+        user.nombre_completo = data.nombre
+        user.telefono = data.telefono
+        db.commit()
+
+    # Check for unique ticket
+    existing_reg = db.query(models.RegistroSorteo).filter(
+        models.RegistroSorteo.sorteo_id == active_sorteo.id,
+        models.RegistroSorteo.numero_registro == data.numero_sorteo
+    ).first()
+
+    if existing_reg:
+        # Instead of error, maybe just return current status but indicating it was already there
+        total_tickets = db.query(func.count(models.RegistroSorteo.id)).filter(
+            models.RegistroSorteo.cedula == data.cedula,
+            models.RegistroSorteo.sorteo_id == active_sorteo.id
+        ).scalar()
+        MOTO_GOAL = 10
+        tickets_restantes = max(0, MOTO_GOAL - total_tickets)
+        return schemas.WhatsAppRegistroResponse(
+            status="already_registered",
+            mensaje=f"El ticket {data.numero_sorteo} ya estaba registrado.",
+            total_tickets=total_tickets,
+            tickets_restantes=tickets_restantes,
+            cedula=user.cedula,
+            nombre=user.nombre_completo
+        )
+
+    # Create registration
+    new_reg = models.RegistroSorteo(
+        cedula=data.cedula,
+        sorteo_id=active_sorteo.id,
+        numero_registro=data.numero_sorteo,
+        comprobante_url=data.url_imagen
+    )
+    db.add(new_reg)
+    db.commit()
+
+    # Count total
+    total_tickets = db.query(func.count(models.RegistroSorteo.id)).filter(
+        models.RegistroSorteo.cedula == data.cedula,
+        models.RegistroSorteo.sorteo_id == active_sorteo.id
+    ).scalar()
+
+    MOTO_GOAL = 10
+    tickets_restantes = max(0, MOTO_GOAL - total_tickets)
+    
+    msg = f"¡Registro exitoso! Llevas {total_tickets} ticket(s)."
+    if tickets_restantes > 0:
+        msg += f" Te faltan {tickets_restantes} para participar por la moto."
+    else:
+        msg += " ¡Ya estás participando por la moto! 🏍️"
+
+    return schemas.WhatsAppRegistroResponse(
+        status="success",
+        mensaje=msg,
+        total_tickets=total_tickets,
+        tickets_restantes=tickets_restantes,
+        cedula=user.cedula,
+        nombre=user.nombre_completo
     )
 
 @app.get("/sorteos", response_model=List[schemas.SorteoConfig])
