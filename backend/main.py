@@ -419,26 +419,34 @@ def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = D
     if not active_sorteo:
         return {"mensaje": "Lo sentimos, no hay sorteos activos en este momento.", "paso_siguiente": "FIN"}
 
+    # --- NUEVA LÓGICA DE SALUDOS ---
+    palabras_saludo = ["hola", "buen", "saludos", "hi", "menu", "inicio", "reinicio"]
+    es_saludo = any(s in texto.lower() for s in palabras_saludo)
+
     # 2. Obtener o Crear Sesión
     session = db.query(models.WhatsAppSession).filter(models.WhatsAppSession.telefono == telefono).first()
-    if not session:
-        session = models.WhatsAppSession(telefono=telefono, paso="INICIO")
-        db.add(session)
-        db.commit()
-
-    # 3. MÁQUINA DE ESTADOS (Imitando el Frontend)
     
-    # --- PASO: INICIO ---
-    if session.paso == "INICIO":
-        # Verificar si ya existe el usuario por teléfono
-        user = db.query(models.User).filter(models.User.telefono == telefono).first()
+    # 3. VERIFICACIÓN UNIVERSAL DE REGISTRO
+    user = db.query(models.User).filter(models.User.telefono == telefono).first()
+
+    if not session:
+        session = models.WhatsAppSession(telefono=telefono)
+        db.add(session)
         if user:
             session.cedula = user.cedula
             session.nombre_completo = user.nombre_completo
             session.paso = "TICKET"
+        else:
+            session.paso = "CEDULA"
+        db.commit()
+
+    # Si es un saludo y ya está registrado, forzamos que pida ticket/foto
+    if es_saludo:
+        if user:
+            session.paso = "TICKET"
             db.commit()
             return {
-                "mensaje": f"¡Hola de nuevo, *{user.nombre_completo.split()[0]}*! 👋\n\nPor favor, ingresa el *número de ticket* que deseas registrar.",
+                "mensaje": f"¡Hola de nuevo, *{user.nombre_completo.split()[0]}*! 👋\n\nPor favor, envíame la *foto de tu ticket* 🎟️ para registrar tu participación.",
                 "paso_siguiente": "TICKET"
             }
         else:
@@ -446,6 +454,26 @@ def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = D
             db.commit()
             return {
                 "mensaje": "¡Hola! 👋 Estás participando por la *moto eléctrica* 🏍️.\n\nPara comenzar, por favor envíame una *foto clara de tu cédula* 📸.\n\n_Sus datos serán tratados de acuerdo a nuestra política de tratamiento de datos y la imagen de su cédula será eliminada del sistema una vez completado el registro._",
+                "paso_siguiente": "CEDULA"
+            }
+
+    # 4. MÁQUINA DE ESTADOS (Imitando el Frontend)
+    
+    # --- PASO: INICIO ---
+    if session.paso == "INICIO":
+        # Esta parte ya se manejó arriba, pero por precaución:
+        if user:
+            session.paso = "TICKET"
+            db.commit()
+            return {
+                "mensaje": f"¡Hola, *{user.nombre_completo.split()[0]}*! 👋 Envíame la *foto de tu ticket*.",
+                "paso_siguiente": "TICKET"
+            }
+        else:
+            session.paso = "CEDULA"
+            db.commit()
+            return {
+                "mensaje": "¡Hola! 👋 Por favor envíame la *foto de tu cédula* para comenzar.",
                 "paso_siguiente": "CEDULA"
             }
 
