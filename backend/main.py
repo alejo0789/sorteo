@@ -541,6 +541,9 @@ def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = D
     if session.paso == "TICKET":
         # Prioridad a lo extraído de la colilla por n8n
         val_ticket = data.extracted_ticket or texto
+        # LIMPIEZA DE TICKET: Eliminar guiones, puntos, espacios y numerales
+        val_ticket = val_ticket.replace("-", "").replace(".", "").replace(" ", "").replace("#", "").strip()
+        
         if len(val_ticket) < 1:
             return {"mensaje": "⚠️ Por favor ingresa el número de ticket o envía la foto.", "paso_siguiente": "TICKET"}
         
