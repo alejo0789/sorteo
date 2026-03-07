@@ -44,3 +44,14 @@ class RegistroSorteo(Base):
     
     usuario = relationship("User", back_populates="registros")
     sorteo_info = relationship("SorteoConfig", back_populates="registros")
+
+class WhatsAppSession(Base):
+    __tablename__ = "marketing_whatsapp_sessions"
+    
+    telefono = Column(String(50), primary_key=True)
+    paso = Column(String(50), default="INICIO")  # INICIO, CEDULA, NOMBRE, TICKET, FOTO
+    cedula = Column(String(50), nullable=True)
+    nombre_completo = Column(String(255), nullable=True)
+    numero_registro = Column(String(100), nullable=True)
+    comprobante_url = Column(String(500), nullable=True)
+    ultima_interaccion = Column(DateTime, default=get_colombia_time, onupdate=get_colombia_time)

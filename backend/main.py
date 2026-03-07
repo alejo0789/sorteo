@@ -399,6 +399,184 @@ def get_user_receipts(cedula: str, sorteo_id: Optional[int] = None, db: Session 
         ) for r in results
     ]
 
+@app.post("/whatsapp/interact", response_model=schemas.WhatsAppInteractResponse)
+def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = Depends(get_db)):
+    """
+    Orquestador de lógica para WhatsApp. n8n solo actúa como puente.
+    """
+    telefono = data.telefono.replace(" ", "").replace("-", "").replace("(", "").replace(")", "").strip()
+    texto = data.texto.strip() if data.texto else ""
+    
+    # 1. Obtener Sorteo Activo
+    from backend.db.models import get_colombia_time
+    today = get_colombia_time().date()
+    active_sorteo = db.query(models.SorteoConfig).filter(
+        models.SorteoConfig.activo == True,
+        models.SorteoConfig.fecha_inicio <= today,
+        models.SorteoConfig.fecha_fin >= today
+    ).first()
+
+    if not active_sorteo:
+        return {"mensaje": "Lo sentimos, no hay sorteos activos en este momento.", "paso_siguiente": "FIN"}
+
+    # 2. Obtener o Crear Sesión
+    session = db.query(models.WhatsAppSession).filter(models.WhatsAppSession.telefono == telefono).first()
+    if not session:
+        session = models.WhatsAppSession(telefono=telefono, paso="INICIO")
+        db.add(session)
+        db.commit()
+
+    # 3. MÁQUINA DE ESTADOS (Imitando el Frontend)
+    
+    # --- PASO: INICIO ---
+    if session.paso == "INICIO":
+        # Verificar si ya existe el usuario por teléfono
+        user = db.query(models.User).filter(models.User.telefono == telefono).first()
+        if user:
+            session.cedula = user.cedula
+            session.nombre_completo = user.nombre_completo
+            session.paso = "TICKET"
+            db.commit()
+            return {
+                "mensaje": f"¡Hola de nuevo, *{user.nombre_completo.split()[0]}*! 👋\n\nPor favor, ingresa el *número de ticket* que deseas registrar.",
+                "paso_siguiente": "TICKET"
+            }
+        else:
+            session.paso = "CEDULA"
+            db.commit()
+            return {
+                "mensaje": "¡Hola! 👋 Estás participando por la *moto eléctrica* 🏍️.\n\nPara comenzar, por favor indícame tu *número de cédula*.",
+                "paso_siguiente": "CEDULA"
+            }
+
+    # --- PASO: CEDULA ---
+    if session.paso == "CEDULA":
+        # Prioridad a lo extraído por n8n, sino al texto manual
+        val = data.extracted_cedula or texto
+        val = val.replace(".", "").replace(",", "").replace(" ", "")
+        
+        if not val.isdigit() or len(val) < 6:
+            return {"mensaje": "⚠️ No logré leer la cédula. Por favor escríbela manualmente o envía una foto más clara.", "paso_siguiente": "CEDULA"}
+        
+        session.cedula = val
+        user = db.query(models.User).filter(models.User.cedula == val).first()
+        if user:
+            session.nombre_completo = user.nombre_completo
+            session.paso = "TICKET"
+            db.commit()
+            return {
+                "mensaje": f"Bienvenido de nuevo, *{user.nombre_completo.split()[0]}*. 👋\n\nIngresa el *número de ticket* que deseas registrar o envía la foto.",
+                "paso_siguiente": "TICKET"
+            }
+        else:
+            # Si n8n extrajo el nombre de la cédula, lo usamos
+            if data.extracted_nombre:
+                session.nombre_completo = data.extracted_nombre
+                session.paso = "TICKET"
+                db.commit()
+                # Crear usuario de una vez
+                new_user = models.User(cedula=session.cedula, nombre_completo=data.extracted_nombre, telefono=telefono)
+                db.add(new_user)
+                db.commit()
+                return {
+                    "mensaje": f"Detecté tu nombre: *{data.extracted_nombre}*. ✅\n\nAhora, ingresa el *número de ticket* que deseas registrar.",
+                    "paso_siguiente": "TICKET"
+                }
+            
+            session.paso = "NOMBRE"
+            db.commit()
+            return {
+                "mensaje": "No tenemos tu registro aún. ¿Cuál es tu *nombre completo*?",
+                "paso_siguiente": "NOMBRE"
+            }
+
+    # --- PASO: NOMBRE ---
+    if session.paso == "NOMBRE":
+        val_nombre = data.extracted_nombre or texto
+        if len(val_nombre) < 3:
+            return {"mensaje": "⚠️ Por favor ingresa tu nombre completo.", "paso_siguiente": "NOMBRE"}
+        
+        session.nombre_completo = val_nombre
+        session.paso = "TICKET"
+        db.commit()
+        # Crear el usuario
+        new_user = models.User(cedula=session.cedula, nombre_completo=val_nombre, telefono=telefono)
+        db.add(new_user)
+        db.commit()
+        
+        return {
+            "mensaje": f"Mucho gusto, *{val_nombre}*. Ahora, ingresa el *número de ticket* o envía la foto.",
+            "paso_siguiente": "TICKET"
+        }
+
+    # --- PASO: TICKET ---
+    if session.paso == "TICKET":
+        # Prioridad a lo extraído de la colilla por n8n
+        val_ticket = data.extracted_ticket or texto
+        if len(val_ticket) < 1:
+            return {"mensaje": "⚠️ Por favor ingresa el número de ticket o envía la foto.", "paso_siguiente": "TICKET"}
+        
+        # Validar si el ticket ya existe
+        existing = db.query(models.RegistroSorteo).filter(
+            models.RegistroSorteo.sorteo_id == active_sorteo.id,
+            models.RegistroSorteo.numero_registro == val_ticket
+        ).first()
+        
+        if existing:
+            return {"mensaje": f"⚠️ El ticket *{val_ticket}* ya ha sido registrado. Prueba con otro.", "paso_siguiente": "TICKET"}
+            
+        session.numero_registro = val_ticket
+        # Si ya tengo imagen (porque n8n la procesó y extrajo el ticket), puedo intentar registrar de una vez
+        if data.media_url and data.extracted_ticket:
+            session.paso = "FOTO" # Simulamos que ya envió la foto
+            data.media_url = data.media_url # Aseguramos que pase al siguiente bloque
+            # No retornamos aquí, dejamos que el flujo caiga al bloque de FOTO
+        else:
+            session.paso = "FOTO"
+            db.commit()
+            return {
+                "mensaje": f"Ticket *{val_ticket}* recibido. 🎟️\n\nAhora envíame una *foto clara* del ticket para completar el registro.",
+                "paso_siguiente": "FOTO"
+            }
+
+    # --- PASO: FOTO ---
+    if session.paso == "FOTO":
+        if not data.media_url:
+            return {"mensaje": "⚠️ Por favor, envía la *foto* del ticket para finalizar.", "paso_siguiente": "FOTO"}
+        
+        # Registrar en la DB
+        new_reg = models.RegistroSorteo(
+            cedula=session.cedula,
+            sorteo_id=active_sorteo.id,
+            numero_registro=session.numero_registro,
+            comprobante_url=data.media_url
+        )
+        db.add(new_reg)
+        
+        # Conteo para la moto
+        total = db.query(func.count(models.RegistroSorteo.id)).filter(
+            models.RegistroSorteo.cedula == session.cedula,
+            models.RegistroSorteo.sorteo_id == active_sorteo.id
+        ).scalar()
+        
+        MOTO_GOAL = 10
+        restantes = max(0, MOTO_GOAL - total)
+        
+        # Limpiar sesión para el siguiente registro
+        session.paso = "TICKET" # Volvemos a pedir ticket por si quiere registrar otro
+        session.numero_registro = None
+        db.commit()
+        
+        msg = f"✅ ¡Ticket registrado exitosamente! 🎉\n\nLlevas *{total} tickets* registrados."
+        if restantes > 0:
+            msg += f"\n\nTe faltan *{restantes}* para participar por la *moto eléctrica*. 🏍️\n\nSi tienes otro ticket, envíalo ahora."
+        else:
+            msg += "\n\n¡Felicidades! Ya estás participando por la *moto*. 🏍️✨\n\nSi tienes más tickets, puedes seguir registrándolos."
+            
+        return {"mensaje": msg, "paso_siguiente": "TICKET", "total_tickets": total}
+
+    return {"mensaje": "Opción no reconocida.", "paso_siguiente": "INICIO"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

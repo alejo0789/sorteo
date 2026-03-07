@@ -86,6 +86,18 @@ class WhatsAppTicketCheck(BaseModel):
     registered: bool
     mensaje: str
 
+# WhatsApp Webhook Interaction
+class WhatsAppInteractRequest(BaseModel):
+    telefono: str
+    texto: Optional[str] = None
+    media_url: Optional[str] = None
+    media_type: Optional[str] = None # 'image', 'document', etc.
+
+class WhatsAppInteractResponse(BaseModel):
+    mensaje: str
+    paso_siguiente: str
+    total_tickets: Optional[int] = 0
+
 # Dashboard Schemas
 class DashboardStats(BaseModel):
     total_usuarios: int
