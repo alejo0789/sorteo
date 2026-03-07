@@ -583,6 +583,7 @@ def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = D
             comprobante_url=data.media_url
         )
         db.add(new_reg)
+        db.flush() # Asegurar que el nuevo registro se cuente en la siguiente consulta
         
         # Conteo para la moto
         total = db.query(func.count(models.RegistroSorteo.id)).filter(
