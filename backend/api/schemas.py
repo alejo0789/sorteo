@@ -92,6 +92,9 @@ class WhatsAppInteractRequest(BaseModel):
     texto: Optional[str] = None
     media_url: Optional[str] = None
     media_type: Optional[str] = None # 'image', 'document', etc.
+    extracted_cedula: Optional[str] = None
+    extracted_nombre: Optional[str] = None
+    extracted_ticket: Optional[str] = None
 
 class WhatsAppInteractResponse(BaseModel):
     mensaje: str
