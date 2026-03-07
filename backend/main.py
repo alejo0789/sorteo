@@ -445,7 +445,7 @@ def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = D
             session.paso = "CEDULA"
             db.commit()
             return {
-                "mensaje": "¡Hola! 👋 Estás participando por la *moto eléctrica* 🏍️.\n\nPara comenzar, por favor indícame tu *número de cédula*.",
+                "mensaje": "¡Hola! 👋 Estás participando por la *moto eléctrica* 🏍️.\n\nPara comenzar, por favor envíame una *foto clara de tu cédula* 📸.\n\n_Sus datos serán tratados de acuerdo a nuestra política de tratamiento de datos y la imagen de su cédula será eliminada del sistema una vez completado el registro._",
                 "paso_siguiente": "CEDULA"
             }
 
