@@ -16,32 +16,38 @@ def fix_data():
         
         print(f"--- Iniciando correccion de datos para Jefferson Correa ---")
         
-        # 1. Buscar si existe el usuario "hola"
+        # 1. Verificar que ambos usuarios existan
         user_hola = db.query(User).filter(User.cedula == incorrect_cedula).first()
+        user_correct = db.query(User).filter(User.cedula == correct_cedula).first()
         
-        if user_hola:
-            print(f"OK: Se encontro el usuario con cedula 'hola': {user_hola.nombre_completo}")
-            
-            # Actualizar registros de sorteo
-            registros = db.query(RegistroSorteo).filter(RegistroSorteo.cedula == incorrect_cedula).all()
-            for reg in registros:
-                reg.cedula = correct_cedula
-                print(f"  - Ticket {reg.numero_registro} movido a la cedula correcta.")
-            
-            # Actualizar sesiones de WhatsApp si existen
-            sesiones = db.query(WhatsAppSession).filter(WhatsAppSession.cedula == incorrect_cedula).all()
-            for ses in sesiones:
-                ses.cedula = correct_cedula
-                print(f"  - Sesion de WhatsApp actualizada.")
+        if not user_correct:
+            print(f"ERROR: No se encontro el usuario con la cedula correcta ({correct_cedula}).")
+            return
 
-            # Eliminar el usuario "hola" ya que sus registros fueron movidos
+        if user_hola:
+            print(f"OK: Se encontro el usuario corrupto: {user_hola.nombre_completo}")
+            
+            # 2. Mover registros de sorteo directamente con un UPDATE
+            # Esto evita conflictos con las relaciones de SQLAlchemy durante el loop
+            num_registros = db.query(RegistroSorteo).filter(RegistroSorteo.cedula == incorrect_cedula).update(
+                {"cedula": correct_cedula}, synchronize_session='fetch'
+            )
+            print(f"OK: {num_registros} registros movidos a la cedula correcta.")
+            
+            # 3. Mover sesiones de WhatsApp
+            num_sesiones = db.query(WhatsAppSession).filter(WhatsAppSession.cedula == incorrect_cedula).update(
+                {"cedula": correct_cedula}, synchronize_session='fetch'
+            )
+            print(f"OK: {num_sesiones} sesiones de WhatsApp actualizadas.")
+
+            # 4. Eliminar el usuario "hola"
             db.delete(user_hola)
             print(f"OK: Usuario corrupto ('hola') eliminado.")
             
             db.commit()
             print(f"\n--- Correccion completada con exito ---")
         else:
-            print(f"WARN: No se encontro ningun usuario con cedula 'hola'.")
+            print(f"WARN: No se encontro el usuario con cedula 'hola'.")
             
     except Exception as e:
         db.rollback()
