@@ -8,6 +8,7 @@ from typing import List, Optional
 import datetime
 import os
 import uuid
+import re
 
 from backend.cloudinary_service import upload_image_to_cloudinary
 
@@ -211,8 +212,8 @@ def check_ticket_registration(numero_sorteo: str, db: Session = Depends(get_db))
 @app.post("/whatsapp/register", response_model=schemas.WhatsAppRegistroResponse)
 def register_from_whatsapp(data: schemas.WhatsAppRegistroCreate, db: Session = Depends(get_db)):
     # Sanitize data
-    data.cedula = data.cedula.replace(".", "").replace(",", "").replace(" ", "").strip()
-    data.telefono = data.telefono.replace(" ", "").replace("-", "").replace("(", "").replace(")", "").strip()
+    data.cedula = re.sub(r"\D", "", data.cedula)
+    data.telefono = re.sub(r"\D", "", data.telefono)
     
     # 1. Direct registration from WhatsApp data
     # Find the current active sorteo automatically
@@ -481,7 +482,7 @@ def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = D
     if session.paso == "CEDULA":
         # Prioridad a lo extraído por n8n, sino al texto manual
         val = data.extracted_cedula or texto
-        val = val.replace(".", "").replace(",", "").replace(" ", "")
+        val = re.sub(r"\D", "", val)
         
         if not val.isdigit() or len(val) < 6:
             return {"mensaje": "⚠️ No logré leer la cédula. Por favor escríbela manualmente o envía una foto más clara.", "paso_siguiente": "CEDULA"}

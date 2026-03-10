@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+import re
 from typing import Optional, List
 from datetime import datetime, date
 
@@ -29,6 +30,16 @@ class UserBase(BaseModel):
     nombre_completo: str
     telefono: Optional[str] = None
 
+    @field_validator("cedula")
+    @classmethod
+    def validate_cedula(cls, v: str) -> str:
+        clean_v = re.sub(r"[.,\s]", "", v)
+        if not clean_v.isdigit():
+            raise ValueError("La cédula debe contener solo números")
+        if len(clean_v) < 6:
+            raise ValueError("La cédula debe tener al menos 6 dígitos")
+        return clean_v
+
 class UserCreate(UserBase):
     pass
 
@@ -45,6 +56,16 @@ class RegistroCreate(BaseModel):
     sorteo_id: int
     numero_registro: str
     comprobante_url: str                    # Mandatory: photo is required
+
+    @field_validator("cedula")
+    @classmethod
+    def validate_cedula(cls, v: str) -> str:
+        clean_v = re.sub(r"[.,\s]", "", v)
+        if not clean_v.isdigit():
+            raise ValueError("La cédula debe contener solo números")
+        if len(clean_v) < 6:
+            raise ValueError("La cédula debe tener al menos 6 dígitos")
+        return clean_v
 
 class Registro(BaseModel):
     id: int
@@ -67,6 +88,16 @@ class WhatsAppRegistroCreate(BaseModel):
     telefono: str
     numero_sorteo: str  # This maps to the ticket number
     url_imagen: str
+
+    @field_validator("cedula")
+    @classmethod
+    def validate_cedula(cls, v: str) -> str:
+        clean_v = re.sub(r"[.,\s]", "", v)
+        if not clean_v.isdigit():
+            raise ValueError("La cédula debe contener solo números")
+        if len(clean_v) < 6:
+            raise ValueError("La cédula debe tener al menos 6 dígitos")
+        return clean_v
 
 class WhatsAppRegistroResponse(BaseModel):
     status: str

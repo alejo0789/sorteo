@@ -501,10 +501,20 @@
 
             try {
                 if (step === "cedula") {
-                    val = val.replace(/[.,\s]/g, "");
-                    userData.cedula = val;
+                    // Limpiar cédula
+                    const cleanVal = val.replace(/[.,\s]/g, "");
+                    
+                    // Validación: solo números y longitud mínima
+                    if (!/^\d+$/.test(cleanVal) || cleanVal.length < 6) {
+                        typing.remove();
+                        addMessage("⚠️ Por favor ingresa un número de cédula válido (solo números, mínimo 6 dígitos).", "bot");
+                        enableInput("Número de cédula...");
+                        return;
+                    }
 
-                    const res = await fetch(`${API_URL}check-user/${val}`);
+                    userData.cedula = cleanVal;
+
+                    const res = await fetch(`${API_URL}check-user/${cleanVal}`);
                     const user = await res.json();
                     typing.remove();
 
