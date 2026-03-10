@@ -38,6 +38,21 @@ def delete_user_data(cedula: str):
         db.close()
 
 if __name__ == "__main__":
-    # Cédula de prueba enviada por el usuario
-    CEDULA_TARGET = "1113783425"
-    delete_user_data(CEDULA_TARGET)
+    # Puedes pasar las cédulas por línea de comandos o editarlas aquí:
+    # Ejemplo: python remove_all_user_records.py 123,456,789
+    if len(sys.argv) > 1:
+        ENTRADA = sys.argv[1]
+    else:
+        # Edita esta variable con las cédulas separadas por coma
+        ENTRADA = "1113783425"
+
+    # Procesar la entrada: separar por comas, quitar espacios y filtrar vacíos
+    cedulas = [c.strip() for c in ENTRADA.split(",") if c.strip()]
+
+    if not cedulas:
+        print("⚠️ No se proporcionaron cédulas para eliminar.")
+    else:
+        print(f"🚀 Iniciando eliminación para {len(cedulas)} usuarios...")
+        for cedula in cedulas:
+            delete_user_data(cedula)
+        print("\n✨ Proceso finalizado.")
