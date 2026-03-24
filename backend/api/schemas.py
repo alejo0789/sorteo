@@ -6,6 +6,8 @@ from datetime import datetime, date
 # Sorteo Config Schemas
 class SorteoConfigBase(BaseModel):
     nombre_sorteo: str
+    descripcion: Optional[str] = None
+    imagen_url: Optional[str] = None
     fecha_inicio: date
     fecha_fin: date
     activo: bool = True
@@ -15,6 +17,8 @@ class SorteoConfigCreate(SorteoConfigBase):
 
 class SorteoConfigUpdate(BaseModel):
     nombre_sorteo: Optional[str] = None
+    descripcion: Optional[str] = None
+    imagen_url: Optional[str] = None
     fecha_inicio: Optional[date] = None
     fecha_fin: Optional[date] = None
     activo: Optional[bool] = None

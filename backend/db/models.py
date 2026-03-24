@@ -26,6 +26,8 @@ class SorteoConfig(Base):
     
     id = Column(Integer, primary_key=True)
     nombre_sorteo = Column(String(255), nullable=False)
+    descripcion = Column(String(500), nullable=True)
+    imagen_url = Column(String(500), nullable=True)    
     fecha_inicio = Column(Date, nullable=False)
     fecha_fin = Column(Date, nullable=False)
     activo = Column(Boolean, default=True)

@@ -202,6 +202,8 @@
             width: 100%;
             max-width: 450px;
             box-shadow: var(--shadow-lg);
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .form-group {
@@ -394,6 +396,18 @@
                     <label>Fecha de Fin</label>
                     <input type="date" id="sFin" required>
                 </div>
+                <div class="form-group">
+                    <label>Descripción del Sorteo</label>
+                    <textarea id="sDescripcion" rows="3" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Imagen del Sorteo (Para el Popup)</label>
+                    <input type="file" id="sImagenFile" accept="image/*" onchange="previewImage(event)">
+                    <input type="hidden" id="sImagenUrl">
+                    <div id="sImagenPreview" style="margin-top: 10px; max-width: 100%; display: none; text-align: center;">
+                        <img id="imgPreview" src="" style="max-height: 150px; max-width: 100%; object-fit: contain; border-radius: 8px;">
+                    </div>
+                </div>
                 <div style="display: flex; gap: 12px; margin-top: 30px;">
                     <button type="button" class="btn-premium btn-outline" style="flex: 1"
                         onclick="closeModal()">Cancelar</button>
@@ -531,6 +545,9 @@
             document.getElementById('modalTitle').textContent = "Nuevo Sorteo";
             document.getElementById('sorteoForm').reset();
             document.getElementById('sId').value = "";
+            document.getElementById('sDescripcion').value = "";
+            document.getElementById('sImagenUrl').value = "";
+            document.getElementById('sImagenPreview').style.display = 'none';
             document.getElementById('modal').style.display = 'flex';
         }
 
@@ -544,10 +561,35 @@
             document.getElementById('sNombre').value = s.nombre_sorteo;
             document.getElementById('sInicio').value = s.fecha_inicio;
             document.getElementById('sFin').value = s.fecha_fin;
+            document.getElementById('sDescripcion').value = s.descripcion || '';
+            document.getElementById('sImagenUrl').value = s.imagen_url || '';
+            document.getElementById('sImagenFile').value = '';
+            if (s.imagen_url) {
+                document.getElementById('sImagenPreview').style.display = 'block';
+                document.getElementById('sImagenPreview').querySelector('img').src = s.imagen_url;
+            } else {
+                document.getElementById('sImagenPreview').style.display = 'none';
+            }
             document.getElementById('modal').style.display = 'flex';
         }
 
         function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('sImagenPreview');
+            const img = document.getElementById('imgPreview');
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            } else {
+                preview.style.display = 'none';
+            }
+        }
 
         async function viewReceipts(cedula) {
             const sorteoId = document.getElementById('sorteoFilter').value;
@@ -594,15 +636,46 @@
 
         document.getElementById('sorteoForm').onsubmit = async (e) => {
             e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Guardando...';
+
+            let imageUrl = document.getElementById('sImagenUrl').value;
+            const imageFile = document.getElementById('sImagenFile').files[0];
+
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('file', imageFile);
+                
+                try {
+                    const uploadRes = await fetch(`${API_URL}upload-sorteo-image`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    if (!uploadRes.ok) throw new Error('Error subiendo imagen');
+                    const uploadData = await uploadRes.json();
+                    // prepend API_URL if it's not empty, otherwise just the returned path
+                    imageUrl = API_URL ? API_URL + uploadData.url : uploadData.url;
+                } catch (error) {
+                    alert("Error al subir la imagen.");
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                    return;
+                }
+            }
+
             const sId = document.getElementById('sId').value;
             const data = {
                 nombre_sorteo: document.getElementById('sNombre').value,
+                descripcion: document.getElementById('sDescripcion').value,
+                imagen_url: imageUrl,
                 fecha_inicio: document.getElementById('sInicio').value,
                 fecha_fin: document.getElementById('sFin').value,
                 activo: true
             };
 
-            const url = sId ? `${API_URL}/sorteos/${sId}` : `${API_URL}/sorteos`;
+            const url = sId ? `${API_URL}sorteos/${sId}` : `${API_URL}sorteos`;
             const method = sId ? 'PUT' : 'POST';
 
             const res = await fetch(url, {
@@ -618,6 +691,8 @@
             } else {
                 alert("Error al guardar los cambios");
             }
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
         };
 
         document.getElementById('sorteoFilter').onchange = loadDashboard;
