@@ -107,15 +107,15 @@ async def upload_receipt(file: UploadFile = File(...), sorteo_nombre: Optional[s
 
 @app.post("/upload-sorteo-image")
 async def upload_sorteo_image(file: UploadFile = File(...)):
-    # Generar nombre único para el archivo
-    file_extension = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
-    filename = f"sorteo_imagen_{uuid.uuid4()}{file_extension}"
-
-    # Guardar localmente en la carpeta assets/sorteos
-    os.makedirs("assets/sorteos", exist_ok=True)
-    file_path = os.path.join("assets", "sorteos", filename)
-
     try:
+        # Generar nombre único para el archivo
+        file_extension = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
+        filename = f"sorteo_imagen_{uuid.uuid4()}{file_extension}"
+
+        # Guardar localmente en la carpeta assets/sorteos
+        os.makedirs("assets/sorteos", exist_ok=True)
+        file_path = os.path.join("assets", "sorteos", filename)
+
         with open(file_path, "wb") as f:
             f.write(await file.read())
             
@@ -123,7 +123,8 @@ async def upload_sorteo_image(file: UploadFile = File(...)):
         public_url = f"assets/sorteos/{filename}"
         return {"url": public_url}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error guardando imagen: {str(e)}")
+        print(f"ERROR UPLOAD: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error procesando imagen: {str(e)}")
 
 @app.post("/register", response_model=schemas.RegistroResponse)
 def register_to_sorteo(data: schemas.RegistroCreate, db: Session = Depends(get_db)):
