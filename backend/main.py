@@ -9,6 +9,9 @@ import datetime
 import os
 import uuid
 import re
+import urllib.request
+import json
+import traceback
 
 from backend.cloudinary_service import upload_image_to_cloudinary
 
@@ -95,13 +98,82 @@ async def upload_receipt(file: UploadFile = File(...), sorteo_nombre: Optional[s
     # Leer el contenido del archivo en memoria
     file_bytes = await file.read()
 
+    # Extraer ID vía webhook n8n si está configurado
+    extracted_id = None
+    webhook_url = os.getenv("WEBHOOK_N8N_POST") or os.getenv("webhook_n8n_post") or os.getenv("webhook_n8n")
+    if webhook_url:
+        try:
+            print(f"Enviando imagen a n8n: {webhook_url}")
+            boundary = uuid.uuid4().hex
+            mime_type = file.content_type or 'image/jpeg'
+            headers = {
+                'Content-Type': f'multipart/form-data; boundary={boundary}',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            body = bytearray()
+            body.extend(f'--{boundary}\r\n'.encode('utf-8'))
+            body.extend(f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'.encode('utf-8'))
+            body.extend(f'Content-Type: {mime_type}\r\n\r\n'.encode('utf-8'))
+            body.extend(file_bytes)
+            body.extend(f'\r\n--{boundary}--\r\n'.encode('utf-8'))
+            
+            req = urllib.request.Request(webhook_url, data=body, headers=headers, method='POST')
+            response = urllib.request.urlopen(req, timeout=40)
+            res_data = json.loads(response.read().decode())
+            
+            if isinstance(res_data, list) and len(res_data) > 0:
+                res_data = res_data[0]
+
+            if isinstance(res_data, dict):
+                # Mapear estructura de n8n Agente (output[0].content[0].text)
+                if "output" in res_data and isinstance(res_data["output"], list) and len(res_data["output"]) > 0:
+                    first_msg = res_data["output"][0]
+                    if isinstance(first_msg, dict) and "content" in first_msg and isinstance(first_msg["content"], list) and len(first_msg["content"]) > 0:
+                        content_item = first_msg["content"][0]
+                        if isinstance(content_item, dict) and "text" in content_item:
+                            try:
+                                json_str = content_item["text"].strip()
+                                # Limpiar backticks si el Agente decide responder con markdown
+                                if json_str.startswith("```json"):
+                                    json_str = json_str[7:-3].strip()
+                                elif json_str.startswith("```"):
+                                    json_str = json_str[3:-3].strip()
+
+                                inner_data = json.loads(json_str)
+                                if isinstance(inner_data, dict):
+                                    res_data.update(inner_data)
+                            except json.JSONDecodeError:
+                                pass
+
+                # Extraer string JSON de "output" si el webhook lo devuelve directo
+                elif "output" in res_data and isinstance(res_data["output"], str):
+                    try:
+                        inner_data = json.loads(res_data["output"])
+                        if isinstance(inner_data, dict):
+                            res_data.update(inner_data)
+                    except json.JSONDecodeError:
+                        pass
+
+                # Validar la bandera baloto_revancha si viene en el JSON
+                es_baloto = res_data.get("baloto_revancha")
+                if str(es_baloto).lower() in ['false', '0', 'no']:
+                    return {"url": None, "numero_registro": None, "error_validacion": "La imagen detectada no parece ser un ticket de Baloto Revancha válido. Intenta con una foto más clara."}
+
+                extracted_id = res_data.get("ticket") or res_data.get("id") or res_data.get("numero_registro") or res_data.get("extracted_ticket")
+                if extracted_id and str(extracted_id).lower() not in ['null', 'none']:
+                    extracted_id = str(extracted_id).replace("-", "").replace(".", "").replace(" ", "").replace("#", "").strip()
+                else:
+                    extracted_id = None
+        except Exception as e:
+            print(f"Error calling n8n webhook: {e}")
+
     # Definir la carpeta basado en el sorteo (o 'general' si no viene ninguno)
     folder_name = f"sorteos/{sorteo_nombre.replace(' ', '_')}" if sorteo_nombre else "sorteos/general"
 
     try:
         # Subir a Cloudinary con el folder dinámico
         public_url = upload_image_to_cloudinary(file_bytes, filename, folder=folder_name)
-        return {"url": public_url}
+        return {"url": public_url, "numero_registro": extracted_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error subiendo imagen a Cloudinary: {str(e)}")
 

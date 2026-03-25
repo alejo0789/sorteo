@@ -653,9 +653,10 @@
                         userData.nombre = user.nombre_completo;
                         userData.telefono = user.telefono || "";
                         addMessage(`Bienvenido de nuevo, **${user.nombre_completo}**. 👋`, "bot");
-                        addMessage(`Ingresa el **número de ticket del Baloto Revancha** que deseas registrar.`, "bot");
-                        step = "registro";
-                        enableInput("Número de ticket...");
+                        addMessage(`Adjunta una **foto del ticket de Baloto Revancha** usando el botón 📷 de abajo. La imagen es **obligatoria** y el sistema extraerá tu número automáticamente.`, "bot");
+                        step = "comprobante";
+                        disableInput("Adjunta la foto con el botón 📷...");
+                        setCameraActive(true);
                     } else {
                         addMessage(`No tenemos tu registro aún. ¿Cuáles son tus **nombres y apellidos completos**?`, "bot");
                         step = "nombre";
@@ -687,9 +688,10 @@
                     userData.telefono = tel;
                     await wait(700);
                     typing.remove();
-                    addMessage(`Perfecto. Ahora ingresa el **número de ticket del Baloto Revancha** que deseas registrar.`, "bot");
-                    step = "registro";
-                    enableInput("Número de ticket...");
+                    addMessage(`Perfecto. Ahora adjunta una **foto del ticket de Baloto Revancha** usando el botón 📷 de abajo. La imagen es **obligatoria** y el sistema extraerá tu número automáticamente.`, "bot");
+                    step = "comprobante";
+                    disableInput("Adjunta la foto con el botón 📷...");
+                    setCameraActive(true);
                 }
                 else if (step === "registro") {
                     if (val.length < 1) {
@@ -703,11 +705,16 @@
                     typing.remove();
                     addMessage(`¡Perfecto! Número de ticket **${val}** recibido. 🎟️`, "bot");
                     await wait(600);
-                    addMessage(`Ahora adjunta una **foto del ticket de Baloto Revancha** usando el botón 📷 de abajo. La imagen es **obligatoria** para completar el registro.`, "bot");
-                    step = "comprobante";
-                    disableInput("Adjunta la foto del ticket con el botón 📷...");
-                    setCameraActive(true);
-                    return; // user must use camera button
+                    if (userData.comprobante_url) {
+                        disableInput("Registrando...");
+                        await submitRegistration(userData.comprobante_url);
+                    } else {
+                        addMessage(`Ahora adjunta una **foto del ticket de Baloto Revancha** usando el botón 📷 de abajo. La imagen es **obligatoria** para completar el registro.`, "bot");
+                        step = "comprobante";
+                        disableInput("Adjunta la foto del ticket con el botón 📷...");
+                        setCameraActive(true);
+                    }
+                    return;
                 }
             } catch (e) {
                 typing.remove();
@@ -741,38 +748,9 @@
             if (step !== "done") fileInput.click();
         };
 
-        fileInput.onchange = async () => {
-            if (fileInput.files.length === 0) return;
-            if (step !== "comprobante") {
-                fileInput.value = "";
-                return;
-            }
-
-            const file = fileInput.files[0];
-            const formData = new FormData();
-            formData.append('file', file);
-
-            disableInput("Subiendo imagen...");
-            const typing = showTyping();
-
+        async function submitRegistration(imgUrl) {
+            const typing2 = showTyping();
             try {
-                const uploadUrl = `${API_URL}upload-receipt${sorteoNombre ? `?sorteo_nombre=${encodeURIComponent(sorteoNombre)}` : ''}`;
-                const uploadRes = await fetch(uploadUrl, { method: 'POST', body: formData });
-                const uploadData = await uploadRes.json();
-                typing.remove();
-
-                if (!uploadData.url) {
-                    addMessage("Error al subir la imagen. Intenta de nuevo.", "bot");
-                    disableInput("Adjunta la foto del ticket con el botón 📷...");
-                    fileInput.value = "";
-                    return;
-                }
-
-                addMessage("He adjuntado mi ticket:", "user", uploadData.url);
-                setCameraActive(false);
-
-                // Submit registration
-                const typing2 = showTyping();
                 const regRes = await fetch(`${API_URL}register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -782,7 +760,7 @@
                         telefono: userData.telefono,
                         sorteo_id: sorteoId,
                         numero_registro: pendingRegistro,
-                        comprobante_url: uploadData.url
+                        comprobante_url: imgUrl
                     })
                 });
                 typing2.remove();
@@ -811,11 +789,78 @@
                     const errorData = await regRes.json();
                     const errorMsg = errorData.detail || "Hubo un error en el registro.";
                     addMessage(`⚠️ **Error:** ${errorMsg}`, "bot");
-                    addMessage(`Por favor, ingresa un **número de ticket válido** e intenta de nuevo.`, "bot");
-                    step = "registro";
-                    pendingRegistro = null;
-                    enableInput("Número de ticket...");
+                    
+                    if (errorMsg.includes("registrado anteriormente")) {
+                        addMessage("Si tienes otro ticket, envíalo usando el botón 📷 de abajo.", "bot");
+                        step = "comprobante";
+                        disableInput("Adjunta otro ticket con 📷...");
+                        setCameraActive(true);
+                    } else {
+                        addMessage(`Por favor, ingresa un **número de ticket válido** e intenta de nuevo.`, "bot");
+                        step = "registro";
+                        pendingRegistro = null;
+                        enableInput("Número de ticket...");
+                    }
                 }
+            } catch (err) {
+                typing2.remove();
+                addMessage("Hubo un problema de conexión. Intenta enviar el número nuevamente.", "bot");
+                step = "registro";
+                enableInput("Número de ticket...");
+            }
+        }
+
+        fileInput.onchange = async () => {
+            if (fileInput.files.length === 0) return;
+            if (step !== "comprobante") {
+                fileInput.value = "";
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            disableInput("Subiendo y extrayendo número del ticket...");
+            const typing = showTyping();
+
+            try {
+                const uploadUrl = `${API_URL}upload-receipt${sorteoNombre ? `?sorteo_nombre=${encodeURIComponent(sorteoNombre)}` : ''}`;
+                const uploadRes = await fetch(uploadUrl, { method: 'POST', body: formData });
+                const uploadData = await uploadRes.json();
+                typing.remove();
+
+                if (!uploadData.url && uploadData.error_validacion) {
+                    addMessage(`⚠️ **Aviso:** ${uploadData.error_validacion}`, "bot");
+                    disableInput("Sube una foto más clara con 📷...");
+                    setCameraActive(true);
+                    fileInput.value = "";
+                    return;
+                }
+
+                if (!uploadData.url) {
+                    addMessage("Error al subir la imagen. Intenta de nuevo.", "bot");
+                    disableInput("Adjunta la foto del ticket con el botón 📷...");
+                    fileInput.value = "";
+                    return;
+                }
+
+                addMessage("He adjuntado mi ticket:", "user", uploadData.url);
+                setCameraActive(false);
+
+                if (!uploadData.numero_registro) {
+                    addMessage("No pudimos extraer el número de la foto automáticamente. Por favor, **escribe el número de ticket** aquí:", "bot");
+                    userData.comprobante_url = uploadData.url;
+                    step = "registro";
+                    enableInput("Número de ticket...");
+                    return;
+                }
+
+                pendingRegistro = uploadData.numero_registro;
+                addMessage(`✅ Hemos identificado tu ticket **${pendingRegistro}** automáticamente.`, "bot");
+                
+                await submitRegistration(uploadData.url);
+
             } catch (e) {
                 typing.remove();
                 addMessage("Ocurrió un error al procesar la imagen.", "bot");
