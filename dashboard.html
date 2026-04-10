@@ -351,6 +351,7 @@
                     <tr>
                         <th>Cédula</th>
                         <th>Nombre Completo</th>
+                        <th>Teléfono</th>
                         <th style="text-align: center;"># Participaciones</th>
                         <th>Recibo</th>
                         <th>Último Registro</th>
@@ -512,6 +513,7 @@
                 tr.innerHTML = `
                     <td style="font-weight: 700; color: var(--acertemos-blue)">${u.cedula}</td>
                     <td style="font-weight: 500">${u.nombre_completo}</td>
+                    <td style="color: var(--text-secondary)">${u.telefono || 'N/A'}</td>
                     <td style="text-align: center;"><span style="background: var(--bg-main); padding: 5px 15px; border-radius: 20px; font-weight: 800; color: var(--primary-color)">${u.count_sorteos}</span></td>
                     <td style="text-align: left;">${receiptHtml}</td>
                     <td style="color: var(--text-secondary); font-size: 0.9rem">${lastDate}</td>
