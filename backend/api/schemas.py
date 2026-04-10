@@ -155,3 +155,11 @@ class ReceiptItem(BaseModel):
     comprobante_url: Optional[str]
     fecha_creacion: datetime
     nombre_sorteo: str
+
+class RegistrationExportItem(BaseModel):
+    cedula: str
+    nombre_completo: str
+    telefono: Optional[str] = None
+    numero_registro: str
+    fecha_creacion: datetime
+    nombre_sorteo: str

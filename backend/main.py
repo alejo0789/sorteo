@@ -441,6 +441,7 @@ def update_sorteo(sorteo_id: int, sorteo_update: schemas.SorteoConfigUpdate, db:
 @app.get("/dashboard/stats", response_model=schemas.DashboardStats)
 def get_dashboard_stats(sorteo_id: Optional[int] = None, db: Session = Depends(get_db)):
     user_count = db.query(func.count(models.User.cedula)).scalar()
+    print(f"[DEBUG] Stats requested. User count: {user_count}")
     
     reg_query = db.query(func.count(models.RegistroSorteo.id))
     if sorteo_id:
@@ -450,7 +451,7 @@ def get_dashboard_stats(sorteo_id: Optional[int] = None, db: Session = Depends(g
     return {"total_usuarios": user_count, "total_registros": reg_count}
 
 @app.get("/dashboard/users", response_model=List[schemas.UserTableItem])
-def get_dashboard_users(sorteo_id: Optional[int] = None, db: Session = Depends(get_db)):
+def get_dashboard_users(sorteo_id: Optional[int] = None, search_ticket: Optional[str] = Query(None), db: Session = Depends(get_db)):
     query = db.query(
         models.User.cedula,
         models.User.nombre_completo,
@@ -463,8 +464,16 @@ def get_dashboard_users(sorteo_id: Optional[int] = None, db: Session = Depends(g
     
     if sorteo_id:
         query = query.filter(models.RegistroSorteo.sorteo_id == sorteo_id)
+    
+    if search_ticket:
+        # If searching by ticket, we use join instead of outerjoin to find ONLY those users
+        query = query.filter(models.RegistroSorteo.numero_registro.like(f"%{search_ticket}%"))
         
-    results = query.group_by(models.User.cedula).all()
+    results = query.group_by(
+        models.User.cedula, 
+        models.User.nombre_completo, 
+        models.User.telefono
+    ).all()
     
     return [
         schemas.UserTableItem(
@@ -496,6 +505,37 @@ def get_user_receipts(cedula: str, sorteo_id: Optional[int] = None, db: Session 
         schemas.ReceiptItem(
             numero_registro=r.numero_registro,
             comprobante_url=r.comprobante_url,
+            fecha_creacion=r.fecha_creacion,
+            nombre_sorteo=r.nombre_sorteo
+        ) for r in results
+    ]
+
+@app.get("/dashboard/export", response_model=List[schemas.RegistrationExportItem])
+def export_dashboard_data(sorteo_id: Optional[int] = Query(None), search_ticket: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    query = db.query(
+        models.User.cedula,
+        models.User.nombre_completo,
+        models.User.telefono,
+        models.RegistroSorteo.numero_registro,
+        models.RegistroSorteo.fecha_creacion,
+        models.SorteoConfig.nombre_sorteo
+    ).join(models.RegistroSorteo, models.User.cedula == models.RegistroSorteo.cedula)\
+     .join(models.SorteoConfig, models.RegistroSorteo.sorteo_id == models.SorteoConfig.id)
+    
+    if sorteo_id:
+        query = query.filter(models.RegistroSorteo.sorteo_id == sorteo_id)
+    
+    if search_ticket:
+        query = query.filter(models.RegistroSorteo.numero_registro.like(f"%{search_ticket}%"))
+        
+    results = query.order_by(models.RegistroSorteo.fecha_creacion.desc()).all()
+    
+    return [
+        schemas.RegistrationExportItem(
+            cedula=r.cedula,
+            nombre_completo=r.nombre_completo,
+            telefono=r.telefono,
+            numero_registro=r.numero_registro,
             fecha_creacion=r.fecha_creacion,
             nombre_sorteo=r.nombre_sorteo
         ) for r in results
