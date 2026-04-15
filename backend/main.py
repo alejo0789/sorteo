@@ -125,30 +125,36 @@ async def upload_receipt(file: UploadFile = File(...), sorteo_nombre: Optional[s
                 res_data = res_data[0]
 
             if isinstance(res_data, dict):
-                # Mapear estructura de n8n Agente (output[0].content[0].text)
+                json_str = None
+                
+                # 1. Structure: output[0].content[0].text (Old n8n Agent)
                 if "output" in res_data and isinstance(res_data["output"], list) and len(res_data["output"]) > 0:
                     first_msg = res_data["output"][0]
                     if isinstance(first_msg, dict) and "content" in first_msg and isinstance(first_msg["content"], list) and len(first_msg["content"]) > 0:
                         content_item = first_msg["content"][0]
                         if isinstance(content_item, dict) and "text" in content_item:
-                            try:
-                                json_str = content_item["text"].strip()
-                                # Limpiar backticks si el Agente decide responder con markdown
-                                if json_str.startswith("```json"):
-                                    json_str = json_str[7:-3].strip()
-                                elif json_str.startswith("```"):
-                                    json_str = json_str[3:-3].strip()
+                            json_str = content_item["text"].strip()
 
-                                inner_data = json.loads(json_str)
-                                if isinstance(inner_data, dict):
-                                    res_data.update(inner_data)
-                            except json.JSONDecodeError:
-                                pass
-
-                # Extraer string JSON de "output" si el webhook lo devuelve directo
+                # 2. Structure: output (String)
                 elif "output" in res_data and isinstance(res_data["output"], str):
+                    json_str = res_data["output"].strip()
+
+                # 3. Structure: content.parts[0].text (New Gemini/n8n)
+                elif "content" in res_data and isinstance(res_data["content"], dict):
+                    parts = res_data["content"].get("parts", [])
+                    if isinstance(parts, list) and len(parts) > 0:
+                        json_str = parts[0].get("text", "").strip()
+
+                # Try to parse the inner JSON string if found
+                if json_str:
                     try:
-                        inner_data = json.loads(res_data["output"])
+                        # Clean markdown backticks if present
+                        if json_str.startswith("```json"):
+                            json_str = json_str[7:-3].strip()
+                        elif json_str.startswith("```"):
+                            json_str = json_str[3:-3].strip()
+
+                        inner_data = json.loads(json_str)
                         if isinstance(inner_data, dict):
                             res_data.update(inner_data)
                     except json.JSONDecodeError:
@@ -161,11 +167,14 @@ async def upload_receipt(file: UploadFile = File(...), sorteo_nombre: Optional[s
 
                 extracted_id = res_data.get("ticket") or res_data.get("id") or res_data.get("numero_registro") or res_data.get("extracted_ticket")
                 if extracted_id and str(extracted_id).lower() not in ['null', 'none']:
-                    extracted_id = str(extracted_id).replace("-", "").replace(".", "").replace(" ", "").replace("#", "").strip()
+                    # Limpieza profunda: Quitar prefijos comunes y CUALQUIER carácter que no sea alfa-numérico
+                    extracted_id = str(extracted_id).upper().replace("NUMERO:", "").replace("TICKET:", "").strip()
+                    extracted_id = re.sub(r"[^A-Z0-9]", "", extracted_id) # Quitamos guiones, puntos y espacios
                 else:
                     extracted_id = None
         except Exception as e:
             print(f"Error calling n8n webhook: {e}")
+            traceback.print_exc()
 
     # Definir la carpeta basado en el sorteo (o 'general' si no viene ninguno)
     folder_name = f"sorteos/{sorteo_nombre.replace(' ', '_')}" if sorteo_nombre else "sorteos/general"
@@ -220,7 +229,9 @@ def register_to_sorteo(data: schemas.RegistroCreate, db: Session = Depends(get_d
         db.commit()
         db.refresh(user)
 
-    # 3. Check for unique ticket number per sorteo
+    # 3. Check for unique ticket number per sorteo (Sanitized)
+    data.numero_registro = re.sub(r"[^A-Z0-9]", "", str(data.numero_registro).upper())
+    
     existing_reg = db.query(models.RegistroSorteo).filter(
         models.RegistroSorteo.sorteo_id == data.sorteo_id,
         models.RegistroSorteo.numero_registro == data.numero_registro
@@ -296,7 +307,9 @@ def check_ticket_registration(numero_sorteo: str, db: Session = Depends(get_db))
     if not active_sorteo:
         return schemas.WhatsAppTicketCheck(registered=False, mensaje="No hay sorteos activos.")
 
-    # 2. Check if ticket exists in active sorteo
+    # 2. Check if ticket exists in active sorteo (Sanitized)
+    numero_sorteo = re.sub(r"[^A-Z0-9]", "", str(numero_sorteo).upper())
+    
     existing_reg = db.query(models.RegistroSorteo).filter(
         models.RegistroSorteo.sorteo_id == active_sorteo.id,
         models.RegistroSorteo.numero_registro == numero_sorteo
@@ -347,7 +360,9 @@ def register_from_whatsapp(data: schemas.WhatsAppRegistroCreate, db: Session = D
         user.telefono = data.telefono
         db.commit()
 
-    # Check for unique ticket
+    # Check for unique ticket (Sanitized)
+    data.numero_sorteo = re.sub(r"[^A-Z0-9]", "", str(data.numero_sorteo).upper())
+    
     existing_reg = db.query(models.RegistroSorteo).filter(
         models.RegistroSorteo.sorteo_id == active_sorteo.id,
         models.RegistroSorteo.numero_registro == data.numero_sorteo
@@ -683,8 +698,8 @@ def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = D
     if session.paso == "TICKET":
         # Prioridad a lo extraído de la colilla por n8n
         val_ticket = data.extracted_ticket or texto
-        # LIMPIEZA DE TICKET: Eliminar guiones, puntos, espacios y numerales
-        val_ticket = val_ticket.replace("-", "").replace(".", "").replace(" ", "").replace("#", "").strip()
+        # LIMPIEZA TOTAL DE TICKET: Solo letras y números
+        val_ticket = re.sub(r"[^A-Z0-9]", "", str(val_ticket).upper())
         
         if len(val_ticket) < 1:
             return {"mensaje": "⚠️ Por favor ingresa el número de ticket o envía la foto.", "paso_siguiente": "TICKET"}
