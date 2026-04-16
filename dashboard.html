@@ -255,7 +255,7 @@
         .receipt-item:hover {
             background: var(--bg-main);
         }
-        
+
         .receipt-item.highlight {
             border-left: 5px solid var(--acertemos-gold);
             background: #fffbeb !important;
@@ -263,9 +263,17 @@
         }
 
         @keyframes pulse-gold {
-            0% { box-shadow: inset 5px 0 0 var(--acertemos-gold); }
-            50% { box-shadow: inset 15px 0 20px rgba(212, 175, 55, 0.1); }
-            100% { box-shadow: inset 5px 0 0 var(--acertemos-gold); }
+            0% {
+                box-shadow: inset 5px 0 0 var(--acertemos-gold);
+            }
+
+            50% {
+                box-shadow: inset 15px 0 20px rgba(212, 175, 55, 0.1);
+            }
+
+            100% {
+                box-shadow: inset 5px 0 0 var(--acertemos-gold);
+            }
         }
 
         .receipt-img-thumb {
@@ -308,8 +316,12 @@
             </div>
             <div style="display: flex; gap: 12px; align-items: center; flex: 1; justify-content: flex-end;">
                 <div style="position: relative; display: flex; align-items: center;">
-                    <svg style="position: absolute; left: 10px; color: var(--text-muted);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input type="text" id="ticketSearch" placeholder="Buscar por tiquete..." 
+                    <svg style="position: absolute; left: 10px; color: var(--text-muted);" width="16" height="16"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="ticketSearch" placeholder="Buscar por tiquete..."
                         style="padding-left: 35px; width: 220px;" onkeyup="handleSearch(event)">
                 </div>
                 <label style="font-weight: 700; color: var(--primary-color); font-size: 0.9rem;">Sorteo:</label>
@@ -317,7 +329,12 @@
                     <option value="">TODOS</option>
                 </select>
                 <button class="btn-premium btn-outline" onclick="exportToExcel()" style="padding: 10px 15px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
                     Exportar
                 </button>
                 <button class="btn-premium" onclick="openCreateModal()">
@@ -421,14 +438,17 @@
                 </div>
                 <div class="form-group">
                     <label>Descripción del Sorteo</label>
-                    <textarea id="sDescripcion" rows="3" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px;"></textarea>
+                    <textarea id="sDescripcion" rows="3"
+                        style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px;"></textarea>
                 </div>
                 <div class="form-group">
                     <label>Imagen del Sorteo (Para el Popup)</label>
                     <input type="file" id="sImagenFile" accept="image/*" onchange="previewImage(event)">
                     <input type="hidden" id="sImagenUrl">
-                    <div id="sImagenPreview" style="margin-top: 10px; max-width: 100%; display: none; text-align: center;">
-                        <img id="imgPreview" src="" style="max-height: 150px; max-width: 100%; object-fit: contain; border-radius: 8px;">
+                    <div id="sImagenPreview"
+                        style="margin-top: 10px; max-width: 100%; display: none; text-align: center;">
+                        <img id="imgPreview" src=""
+                            style="max-height: 150px; max-width: 100%; object-fit: contain; border-radius: 8px;">
                     </div>
                 </div>
                 <div style="display: flex; gap: 12px; margin-top: 30px;">
@@ -451,7 +471,7 @@
         // Allowed emails for production. Localhost is always bypassed.
         const ALLOWED_EMAILS = [
             "communitymanager@acertemos.com",
-            "iderdecomunicaciones@certemos.com",
+            "liderdecomunicaciones@acertemos.com",
             "ingenieroia@acertemos.com"
         ];
 
@@ -495,10 +515,10 @@
                 if (!res.ok) throw new Error("HTTP " + res.status);
                 allSorteos = await res.json();
                 const filter = document.getElementById('sorteoFilter');
-    
+
                 // Clear current options except "TODOS"
                 while (filter.options.length > 1) filter.remove(1);
-    
+
                 allSorteos.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.id;
@@ -515,43 +535,43 @@
             try {
                 const sorteoId = document.getElementById('sorteoFilter').value;
                 const searchTicket = document.getElementById('ticketSearch').value;
-    
+
                 // 1. Load Stats
                 const statsRes = await fetch(`${API_URL}dashboard/stats` + (sorteoId ? `?sorteo_id=${sorteo_id}` : ''));
                 if (!statsRes.ok) throw new Error("Error cargando estadísticas: " + statsRes.status);
-                
+
                 const stats = await statsRes.json();
                 document.getElementById('totalUsers').textContent = stats.total_usuarios;
                 document.getElementById('totalRegistros').textContent = stats.total_registros;
                 document.getElementById('regContext').textContent = sorteoId ? "Para este sorteo" : "Total acumulado";
 
-            // 2. Load Table
-            let params = new URLSearchParams();
-            if (sorteoId) params.append('sorteo_id', sorteoId);
-            if (searchTicket) params.append('search_ticket', searchTicket);
-            
-            const url = `${API_URL}dashboard/users` + (params.toString() ? '?' + params.toString() : '');
-            
-            const usersRes = await fetch(url);
-            if (!usersRes.ok) throw new Error("Error HTTP: " + usersRes.status);
-            const users = await usersRes.json();
-            if (!Array.isArray(users)) throw new Error("Respuesta inválida del servidor");
-            
-            const tbody = document.getElementById('userTableBody');
-            tbody.innerHTML = '';
+                // 2. Load Table
+                let params = new URLSearchParams();
+                if (sorteoId) params.append('sorteo_id', sorteoId);
+                if (searchTicket) params.append('search_ticket', searchTicket);
 
-            users.forEach(u => {
-                const tr = document.createElement('tr');
-                const lastDate = u.fecha_ultimo_registro ? new Date(u.fecha_ultimo_registro).toLocaleString() : 'N/A';
+                const url = `${API_URL}dashboard/users` + (params.toString() ? '?' + params.toString() : '');
 
-                const receiptHtml = u.count_receipts > 0
-                    ? `<a href="javascript:void(0)" onclick="viewReceipts('${u.cedula}')" style="color: #004e89; text-decoration: none; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
+                const usersRes = await fetch(url);
+                if (!usersRes.ok) throw new Error("Error HTTP: " + usersRes.status);
+                const users = await usersRes.json();
+                if (!Array.isArray(users)) throw new Error("Respuesta inválida del servidor");
+
+                const tbody = document.getElementById('userTableBody');
+                tbody.innerHTML = '';
+
+                users.forEach(u => {
+                    const tr = document.createElement('tr');
+                    const lastDate = u.fecha_ultimo_registro ? new Date(u.fecha_ultimo_registro).toLocaleString() : 'N/A';
+
+                    const receiptHtml = u.count_receipts > 0
+                        ? `<a href="javascript:void(0)" onclick="viewReceipts('${u.cedula}')" style="color: #004e89; text-decoration: none; font-size: 0.8rem; display: flex; align-items: center; gap: 5px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         Ver Recibos (${u.count_receipts})
                     </a>`
-                    : '<span style="color: #cbd5e1; font-size: 0.8rem">Sin Recibos</span>';
+                        : '<span style="color: #cbd5e1; font-size: 0.8rem">Sin Recibos</span>';
 
-                tr.innerHTML = `
+                    tr.innerHTML = `
                     <td style="font-weight: 700; color: var(--acertemos-blue)">${u.cedula}</td>
                     <td style="font-weight: 500">${u.nombre_completo}</td>
                     <td style="color: var(--text-secondary)">${u.telefono || 'N/A'}</td>
@@ -559,25 +579,25 @@
                     <td style="text-align: left;">${receiptHtml}</td>
                     <td style="color: var(--text-secondary); font-size: 0.9rem">${lastDate}</td>
                 `;
-                tbody.appendChild(tr);
-            });
+                    tbody.appendChild(tr);
+                });
 
-            // 3. Update Sorteo Detail Card
-            const detailCard = document.getElementById('sorteoDetailCard');
-            if (sorteoId) {
-                const s = allSorteos.find(x => x.id == sorteoId);
-                if (s) {
-                    detailCard.style.display = 'flex';
-                    document.getElementById('detNombre').textContent = s.nombre_sorteo;
-                    document.getElementById('detInicio').textContent = s.fecha_inicio;
-                    document.getElementById('detFin').textContent = s.fecha_fin;
+                // 3. Update Sorteo Detail Card
+                const detailCard = document.getElementById('sorteoDetailCard');
+                if (sorteoId) {
+                    const s = allSorteos.find(x => x.id == sorteoId);
+                    if (s) {
+                        detailCard.style.display = 'flex';
+                        document.getElementById('detNombre').textContent = s.nombre_sorteo;
+                        document.getElementById('detInicio').textContent = s.fecha_inicio;
+                        document.getElementById('detFin').textContent = s.fecha_fin;
 
-                    const now = new Date().toISOString().split('T')[0];
-                    const isAct = now >= s.fecha_inicio && now <= s.fecha_fin;
-                    document.getElementById('detEstado').innerHTML = isAct
-                        ? '<span style="color: #22c55e">● ACTIVO</span>'
-                        : '<span style="color: #64748b">● FINALIZADO</span>';
-                }
+                        const now = new Date().toISOString().split('T')[0];
+                        const isAct = now >= s.fecha_inicio && now <= s.fecha_fin;
+                        document.getElementById('detEstado').innerHTML = isAct
+                            ? '<span style="color: #22c55e">● ACTIVO</span>'
+                            : '<span style="color: #64748b">● FINALIZADO</span>';
+                    }
                 } else {
                     detailCard.style.display = 'none';
                 }
@@ -590,13 +610,13 @@
         async function exportToExcel() {
             const sorteoId = document.getElementById('sorteoFilter').value;
             const searchTicket = document.getElementById('ticketSearch').value;
-            
+
             let exportParams = new URLSearchParams();
             if (sorteoId) exportParams.append('sorteo_id', sorteoId);
             if (searchTicket) exportParams.append('search_ticket', searchTicket);
-            
+
             let fetchUrl = `${API_URL}dashboard/export` + (exportParams.toString() ? '?' + exportParams.toString() : '');
-            
+
             try {
                 const res = await fetch(fetchUrl);
                 if (!res.ok) throw new Error("Error fetching data: " + res.status);
@@ -634,7 +654,7 @@
                 worksheet['!cols'] = colWidths;
 
                 // File name
-                const fileName = sorteoId 
+                const fileName = sorteoId
                     ? `Reporte_Registros_${allSorteos.find(s => s.id == sorteoId).nombre_sorteo}.xlsx`
                     : "Reporte_Registros_General.xlsx";
 
@@ -687,7 +707,7 @@
             const img = document.getElementById('imgPreview');
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     img.src = e.target.result;
                     preview.style.display = 'block';
                 }
@@ -712,7 +732,7 @@
                 receipts.forEach(r => {
                     const item = document.createElement('div');
                     item.className = 'receipt-item';
-                    
+
                     // Highlight if this is the ticket searched
                     if (searchTicket && r.numero_registro.toString().includes(searchTicket)) {
                         item.classList.add('highlight');
@@ -767,7 +787,7 @@
             if (imageFile) {
                 const formData = new FormData();
                 formData.append('file', imageFile);
-                
+
                 try {
                     const uploadRes = await fetch(`${API_URL}upload-sorteo-image`, {
                         method: 'POST',
