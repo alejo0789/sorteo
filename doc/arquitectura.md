@@ -36,7 +36,7 @@ Vincula a los clientes con sus participaciones y fotos del ticket.
    - Si es nuevo, solicita nombre y teléfono.
    - Solicita número de ticket y **CAPTURA OBLIGATORIA DE FOTO**.
 
-2. **Backend (FastAPI) en puerto 8003:**
+2. **Backend (FastAPI) en puerto 8034:**
    - Valida que el ticket no exista previamente para ese sorteo.
    - Guarda la imagen en `assets/receipts/`.
    - Registra al usuario si no existía.

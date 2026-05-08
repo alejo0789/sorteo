@@ -13,7 +13,7 @@ El sistema sigue una arquitectura monolítica ligera con una clara separación e
   - **Producción:** MariaDB/MySQL (Configurable vía `.env`).
   - **Prefijos de Tablas:** Todas las tablas de este sistema usan el prefijo `marketing_` para evitar conflictos en bases de datos compartidas.
 - **Almacenamiento:** Imágenes de los tickets se guardan en **Cloudinary** para escalabilidad y evitar bloqueos.
-- **Servidor:** FastAPI corriendo en el puerto **8000** o **8003** (ver `run.py` o `.env`).
+- **Servidor:** FastAPI corriendo en el puerto **8034** (ver `run.py`).
 
 ## 🚀 Cómo Correr el Proyecto
 

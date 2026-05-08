@@ -49,7 +49,7 @@ try:
 except Exception as e:
     print(f"[Migration] Skipped or error: {e}")
 
-app = FastAPI(title="Acertemos Sorteos API")
+app = FastAPI(title="Acertemos Sorteos API", root_path="/registro_sorteos")
 
 # Ensure assets directory exists and mount it
 os.makedirs("assets/receipts", exist_ok=True)
