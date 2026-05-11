@@ -12,6 +12,7 @@ import re
 import urllib.request
 import json
 import traceback
+import ssl
 
 from backend.cloudinary_service import upload_image_to_cloudinary
 
@@ -118,7 +119,8 @@ async def upload_receipt(file: UploadFile = File(...), sorteo_nombre: Optional[s
             body.extend(f'\r\n--{boundary}--\r\n'.encode('utf-8'))
             
             req = urllib.request.Request(webhook_url, data=body, headers=headers, method='POST')
-            response = urllib.request.urlopen(req, timeout=40)
+            context = ssl._create_unverified_context()
+            response = urllib.request.urlopen(req, timeout=40, context=context)
             res_data = json.loads(response.read().decode())
             
             if isinstance(res_data, list) and len(res_data) > 0:
