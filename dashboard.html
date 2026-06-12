@@ -537,7 +537,7 @@
                 const searchTicket = document.getElementById('ticketSearch').value;
 
                 // 1. Load Stats
-                const statsRes = await fetch(`${API_URL}dashboard/stats` + (sorteoId ? `?sorteo_id=${sorteo_id}` : ''));
+                const statsRes = await fetch(`${API_URL}dashboard/stats` + (sorteoId ? `?sorteo_id=${sorteoId}` : ''));
                 if (!statsRes.ok) throw new Error("Error cargando estadísticas: " + statsRes.status);
 
                 const stats = await statsRes.json();
@@ -825,8 +825,13 @@
             });
 
             if (res.ok) {
+                const saved = await res.json();
                 closeModal();
                 await loadSorteos();
+                // Si era un sorteo nuevo, auto-seleccionar en el dropdown
+                if (!sId && saved && saved.id) {
+                    document.getElementById('sorteoFilter').value = saved.id;
+                }
                 await loadDashboard();
             } else {
                 alert("Error al guardar los cambios");
