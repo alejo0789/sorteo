@@ -835,7 +835,7 @@
 
                     if (user) {
                         addMessage(`Bienvenido de nuevo, **${user.nombre_completo}**. 👋`, "bot");
-                        addMessage(`Adjunta una **foto del ticket de Baloto Revancha** usando el botón 📷 de abajo. 
+                        addMessage(`Adjunta una **foto de tu ticket** usando el botón 📷 de abajo. 
                         
 Asegúrate de que la foto sea **completa y en forma vertical**:
 
@@ -876,7 +876,7 @@ La imagen es **obligatoria** y el sistema extraerá tu número automáticamente.
                     userData.telefono = tel;
                     await wait(700);
                     typing.remove();
-                    addMessage(`Perfecto. Ahora adjunta una **foto del ticket de Baloto Revancha** usando el botón 📷 de abajo. 
+                    addMessage(`Perfecto. Ahora adjunta una **foto de tu ticket** usando el botón 📷 de abajo. 
                     
 Asegúrate de que la foto sea **completa y en forma vertical**:
 
@@ -906,7 +906,7 @@ La imagen es **obligatoria** y el sistema extraerá tu número automáticamente.
                         disableInput("Registrando...");
                         await submitRegistration(userData.comprobante_url);
                     } else {
-                        addMessage(`Ahora adjunta una **foto del ticket de Baloto Revancha** usando el botón 📷 de abajo. 
+                        addMessage(`Ahora adjunta una **foto de tu ticket** usando el botón 📷 de abajo. 
                         
 Asegúrate de que la foto sea **completa y en forma vertical**:
 

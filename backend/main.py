@@ -181,7 +181,7 @@ async def upload_receipt(file: UploadFile = File(...), sorteo_nombre: Optional[s
                 # Validar la bandera baloto_revancha si viene en el JSON
                 es_baloto = res_data.get("baloto_revancha")
                 if es_baloto is not None and str(es_baloto).lower() in ['false', '0', 'no']:
-                    return {"url": None, "numero_registro": None, "error_validacion": "La imagen detectada no parece ser un ticket de Baloto Revancha válido. Intenta con una foto más clara."}
+                    return {"url": None, "numero_registro": None, "error_validacion": "La imagen detectada no parece ser un ticket válido. Intenta con una foto más clara."}
 
                 # Nueva validación para Chance o Betplay
                 tipo_doc = res_data.get("tipo_documento_detectado")
