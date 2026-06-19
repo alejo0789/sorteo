@@ -43,6 +43,8 @@ class RegistroSorteo(Base):
     numero_registro = Column(String(50), nullable=False)
     comprobante_url = Column(String(500), nullable=True) # URL o path de la imagen del comprobante
     fecha_creacion = Column(DateTime, default=get_colombia_time)
+    tipo_ticket = Column(String(50), nullable=True)
+    monto_ticket = Column(Integer, nullable=True)
     
     usuario = relationship("User", back_populates="registros")
     sorteo_info = relationship("SorteoConfig", back_populates="registros")
@@ -56,4 +58,6 @@ class WhatsAppSession(Base):
     nombre_completo = Column(String(255), nullable=True)
     numero_registro = Column(String(100), nullable=True)
     comprobante_url = Column(String(500), nullable=True)
+    tipo_ticket = Column(String(50), nullable=True)
+    monto_ticket = Column(Integer, nullable=True)
     ultima_interaccion = Column(DateTime, default=get_colombia_time, onupdate=get_colombia_time)

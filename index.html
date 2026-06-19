@@ -981,7 +981,9 @@ La imagen es **obligatoria** para completar el registro.`, "bot");
                         telefono: userData.telefono,
                         sorteo_id: sorteoId,
                         numero_registro: pendingRegistro,
-                        comprobante_url: imgUrl
+                        comprobante_url: imgUrl,
+                        tipo_ticket: userData.tipo_ticket,
+                        monto_ticket: userData.monto_ticket
                     })
                 });
                 typing2.remove();
@@ -1088,6 +1090,8 @@ La imagen es **obligatoria** para completar el registro.`, "bot");
                 if (!uploadData.numero_registro) {
                     addMessage("No pudimos leer el número automáticamente (asegúrate de que la foto sea vertical y tenga buena luz). 💡\n\nPor favor, **escribe el número de ticket** manualmente para continuar:", "bot");
                     userData.comprobante_url = uploadData.url;
+                    userData.tipo_ticket = uploadData.tipo_ticket;
+                    userData.monto_ticket = uploadData.monto_ticket;
                     step = "registro";
                     enableInput("Escribe el número aquí...");
                     return;
@@ -1095,6 +1099,8 @@ La imagen es **obligatoria** para completar el registro.`, "bot");
 
                 pendingRegistro = uploadData.numero_registro;
                 userData.comprobante_url = uploadData.url;
+                userData.tipo_ticket = uploadData.tipo_ticket;
+                userData.monto_ticket = uploadData.monto_ticket;
                 
                 addMessage(`🔍 He detectado el número: **${pendingRegistro}**.`, "bot");
                 addMessage(`¿Este número es correcto?\n\n[choices:Sí|No]`, "bot");

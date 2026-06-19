@@ -60,6 +60,8 @@ class RegistroCreate(BaseModel):
     sorteo_id: int
     numero_registro: str
     comprobante_url: str                    # Mandatory: photo is required
+    tipo_ticket: Optional[str] = None
+    monto_ticket: Optional[int] = None
 
     @field_validator("cedula")
     @classmethod
@@ -130,6 +132,8 @@ class WhatsAppInteractRequest(BaseModel):
     extracted_cedula: Optional[str] = None
     extracted_nombre: Optional[str] = None
     extracted_ticket: Optional[str] = None
+    tipo_ticket: Optional[str] = None
+    monto_ticket: Optional[int] = None
 
 class WhatsAppInteractResponse(BaseModel):
     mensaje: str

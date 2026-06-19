@@ -45,6 +45,22 @@ def run_migrations():
                 conn.execute(text(f"ALTER TABLE {t_name2} ADD COLUMN imagen_url VARCHAR(500)"))
                 conn.commit()
 
+        t_name3 = "marketing_registros_sorteo"
+        if t_name3 in inspector.get_table_names():
+            existing_cols3 = [c["name"] for c in inspector.get_columns(t_name3)]
+            if "tipo_ticket" not in existing_cols3:
+                conn.execute(text(f"ALTER TABLE {t_name3} ADD COLUMN tipo_ticket VARCHAR(50)"))
+                conn.execute(text(f"ALTER TABLE {t_name3} ADD COLUMN monto_ticket INTEGER"))
+                conn.commit()
+
+        t_name4 = "marketing_whatsapp_sessions"
+        if t_name4 in inspector.get_table_names():
+            existing_cols4 = [c["name"] for c in inspector.get_columns(t_name4)]
+            if "tipo_ticket" not in existing_cols4:
+                conn.execute(text(f"ALTER TABLE {t_name4} ADD COLUMN tipo_ticket VARCHAR(50)"))
+                conn.execute(text(f"ALTER TABLE {t_name4} ADD COLUMN monto_ticket INTEGER"))
+                conn.commit()
+
 try:
     run_migrations()
 except Exception as e:
@@ -164,8 +180,16 @@ async def upload_receipt(file: UploadFile = File(...), sorteo_nombre: Optional[s
 
                 # Validar la bandera baloto_revancha si viene en el JSON
                 es_baloto = res_data.get("baloto_revancha")
-                if str(es_baloto).lower() in ['false', '0', 'no']:
+                if es_baloto is not None and str(es_baloto).lower() in ['false', '0', 'no']:
                     return {"url": None, "numero_registro": None, "error_validacion": "La imagen detectada no parece ser un ticket de Baloto Revancha válido. Intenta con una foto más clara."}
+
+                # Nueva validación para Chance o Betplay
+                tipo_doc = res_data.get("tipo_documento_detectado")
+                if tipo_doc == "invalido":
+                    return {"url": None, "numero_registro": None, "error_validacion": "La imagen no parece ser un ticket válido de Chance o Betplay. Intenta con una foto más clara."}
+                
+                monto_extraido = res_data.get("valor")
+                tipo_ticket_extraido = str(tipo_doc).lower() if tipo_doc else None
 
                 extracted_id = res_data.get("ticket") or res_data.get("id") or res_data.get("numero_registro") or res_data.get("extracted_ticket")
                 if extracted_id and str(extracted_id).lower() not in ['null', 'none']:
@@ -184,7 +208,12 @@ async def upload_receipt(file: UploadFile = File(...), sorteo_nombre: Optional[s
     try:
         # Subir a Cloudinary con el folder dinámico
         public_url = upload_image_to_cloudinary(file_bytes, filename, folder=folder_name)
-        return {"url": public_url, "numero_registro": extracted_id}
+        return {
+            "url": public_url, 
+            "numero_registro": extracted_id,
+            "tipo_ticket": locals().get("tipo_ticket_extraido"),
+            "monto_ticket": locals().get("monto_extraido")
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error subiendo imagen a Cloudinary: {str(e)}")
 
@@ -231,7 +260,16 @@ def register_to_sorteo(data: schemas.RegistroCreate, db: Session = Depends(get_d
         db.commit()
         db.refresh(user)
 
-    # 3. Check for unique ticket number per sorteo (Sanitized)
+    # 3. Validate condition for chance and betplay
+    if data.tipo_ticket:
+        tipo = str(data.tipo_ticket).strip().lower()
+        monto = data.monto_ticket or 0
+        if tipo == "chance" and monto <= 3000:
+            raise HTTPException(status_code=400, detail="Para participar con Chance el valor del ticket debe ser superior a $3.000.")
+        if tipo == "betplay" and monto <= 50000:
+            raise HTTPException(status_code=400, detail="Para participar con Betplay el valor del ticket debe ser superior a $50.000.")
+
+    # 4. Check for unique ticket number per sorteo (Sanitized)
     data.numero_registro = re.sub(r"[^A-Z0-9]", "", str(data.numero_registro).upper())
     
     existing_reg = db.query(models.RegistroSorteo).filter(
@@ -245,12 +283,14 @@ def register_to_sorteo(data: schemas.RegistroCreate, db: Session = Depends(get_d
             detail=f"El ticket '{data.numero_registro}' ya ha sido registrado anteriormente."
         )
 
-    # 4. Create the registration
+    # 5. Create the registration
     new_reg = models.RegistroSorteo(
         cedula=data.cedula,
         sorteo_id=data.sorteo_id,
         numero_registro=data.numero_registro,
-        comprobante_url=data.comprobante_url
+        comprobante_url=data.comprobante_url,
+        tipo_ticket=data.tipo_ticket,
+        monto_ticket=data.monto_ticket
     )
     db.add(new_reg)
     db.commit()
@@ -716,6 +756,11 @@ def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = D
             return {"mensaje": f"⚠️ El ticket *{val_ticket}* ya ha sido registrado. Prueba con otro.", "paso_siguiente": "TICKET"}
             
         session.numero_registro = val_ticket
+        if data.tipo_ticket:
+            session.tipo_ticket = data.tipo_ticket
+        if data.monto_ticket is not None:
+            session.monto_ticket = data.monto_ticket
+
         # Si ya tengo imagen (porque n8n la procesó y extrajo el ticket), puedo intentar registrar de una vez
         if data.media_url and data.extracted_ticket:
             session.paso = "FOTO" # Simulamos que ya envió la foto
@@ -733,13 +778,42 @@ def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = D
     if session.paso == "FOTO":
         if not data.media_url:
             return {"mensaje": "⚠️ Por favor, envía la *foto* del ticket para finalizar.", "paso_siguiente": "FOTO"}
+            
+        if data.tipo_ticket:
+            session.tipo_ticket = data.tipo_ticket
+        if data.monto_ticket is not None:
+            session.monto_ticket = data.monto_ticket
+            
+        # VALIDATION OF TIPO TICKET AND MONTO
+        tipo = str(session.tipo_ticket).strip().lower() if session.tipo_ticket else None
+        monto = session.monto_ticket or 0
+
+        if tipo == "invalido":
+            session.paso = "TICKET"
+            session.numero_registro = None
+            db.commit()
+            return {"mensaje": "⚠️ La imagen no parece ser un ticket válido de Chance o Betplay. Intenta con una foto más clara.", "paso_siguiente": "TICKET"}
+
+        if tipo == "chance" and monto <= 3000:
+            session.paso = "TICKET"
+            session.numero_registro = None
+            db.commit()
+            return {"mensaje": "⚠️ Lo sentimos, para participar con *Chance* el valor del ticket debe ser superior a $3.000.", "paso_siguiente": "TICKET"}
+        
+        if tipo == "betplay" and monto <= 50000:
+            session.paso = "TICKET"
+            session.numero_registro = None
+            db.commit()
+            return {"mensaje": "⚠️ Lo sentimos, para participar con *Betplay* el valor del ticket debe ser superior a $50.000.", "paso_siguiente": "TICKET"}
         
         # Registrar en la DB
         new_reg = models.RegistroSorteo(
             cedula=session.cedula,
             sorteo_id=active_sorteo.id,
             numero_registro=session.numero_registro,
-            comprobante_url=data.media_url
+            comprobante_url=data.media_url,
+            tipo_ticket=session.tipo_ticket,
+            monto_ticket=session.monto_ticket
         )
         db.add(new_reg)
         db.flush() # Asegurar que el nuevo registro se cuente en la siguiente consulta
@@ -756,6 +830,8 @@ def whatsapp_orchestrator(data: schemas.WhatsAppInteractRequest, db: Session = D
         # Limpiar sesión para el siguiente registro
         session.paso = "TICKET" # Volvemos a pedir ticket por si quiere registrar otro
         session.numero_registro = None
+        session.tipo_ticket = None
+        session.monto_ticket = None
         db.commit()
         
         msg = f"✅ ¡Ticket registrado exitosamente! 🎉\n\nLlevas *{total} tickets* registrados."
