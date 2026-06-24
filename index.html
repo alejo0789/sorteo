@@ -20,14 +20,15 @@
         }
 
         .chat-wrapper {
-            max-width: 600px;
+            max-width: 800px;
             margin: 40px auto;
             background: white;
             border-radius: 20px;
             box-shadow: 0 15px 35px rgba(0, 33, 71, 0.15);
             display: flex;
             flex-direction: column;
-            height: 600px;
+            height: 75vh;
+            min-height: 650px;
             border: 1px solid #e2e8f0;
             overflow: hidden;
         }
@@ -82,6 +83,12 @@
             line-height: 1.5;
             position: relative;
             animation: slideIn 0.3s ease-out;
+        }
+
+        @media (min-width: 601px) {
+            .msg {
+                font-size: 1.1em;
+            }
         }
 
         @keyframes slideIn {
@@ -619,7 +626,7 @@
 
         <div class="chat-footer">
             <input type="file" id="fileInput" style="display: none;" accept="image/*">
-            <button id="cameraBtn" class="premium-camera" title="Adjuntar foto del ticket">
+            <button id="cameraBtn" class="premium-camera" title="Adjuntar la foto del chance o recarga betplay">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -748,7 +755,7 @@
             cameraBtn.classList.remove('active');
         }
 
-        function disableInput(placeholder = "Adjunta el ticket con el botón 📷...") {
+        function disableInput(placeholder = "Adjunta la foto con el botón 📷...") {
             chatInput.disabled = true;
             chatInput.placeholder = placeholder;
         }
@@ -759,7 +766,7 @@
                 cameraBtn.title = "📷 ¡Adjunta la foto aquí!";
             } else {
                 cameraBtn.classList.remove('active');
-                cameraBtn.title = "Adjuntar foto del ticket";
+                cameraBtn.title = "Adjuntar la foto del chance o recarga betplay";
             }
         }
 
@@ -841,7 +848,7 @@
 
                     if (user) {
                         addMessage(`Bienvenido de nuevo, **${user.nombre_completo}**. 👋`, "bot");
-                        addMessage(`Adjunta una **foto de tu ticket** usando el botón 📷 de abajo. 
+                        addMessage(`Adjunta **la foto del chance o recarga betplay** usando el botón 📷 de abajo.
                         
 Asegúrate de que la foto sea **completa y en forma vertical**:
 
@@ -882,7 +889,7 @@ La imagen es **obligatoria** y el sistema extraerá tu número automáticamente.
                     userData.telefono = tel;
                     await wait(700);
                     typing.remove();
-                    addMessage(`Perfecto. Ahora adjunta una **foto de tu ticket** usando el botón 📷 de abajo. 
+                    addMessage(`Perfecto. Ahora adjunta **la foto del chance o recarga betplay** usando el botón 📷 de abajo.
                     
 Asegúrate de que la foto sea **completa y en forma vertical**:
 
@@ -912,7 +919,7 @@ La imagen es **obligatoria** y el sistema extraerá tu número automáticamente.
                         disableInput("Registrando...");
                         await submitRegistration(userData.comprobante_url);
                     } else {
-                        addMessage(`Ahora adjunta una **foto de tu ticket** usando el botón 📷 de abajo. 
+                        addMessage(`Ahora adjunta **la foto del chance o recarga betplay** usando el botón 📷 de abajo.
                         
 Asegúrate de que la foto sea **completa y en forma vertical**:
 
@@ -920,7 +927,7 @@ Asegúrate de que la foto sea **completa y en forma vertical**:
 
 La imagen es **obligatoria** para completar el registro.`, "bot");
                         step = "comprobante";
-                        disableInput("Adjunta la foto del ticket con el botón 📷...");
+                        disableInput("Adjunta la foto con el botón 📷...");
                         setCameraActive(true);
                     }
                     return;
@@ -1085,7 +1092,7 @@ La imagen es **obligatoria** para completar el registro.`, "bot");
 
                 if (!uploadData.url) {
                     addMessage("Error al subir la imagen. Intenta de nuevo.", "bot");
-                    disableInput("Adjunta la foto del ticket con el botón 📷...");
+                    disableInput("Adjunta la foto con el botón 📷...");
                     fileInput.value = "";
                     return;
                 }
@@ -1117,7 +1124,7 @@ La imagen es **obligatoria** para completar el registro.`, "bot");
             } catch (e) {
                 typing.remove();
                 addMessage("Ocurrió un error al procesar la imagen.", "bot");
-                disableInput("Adjunta la foto del ticket con el botón 📷...");
+                disableInput("Adjunta la foto con el botón 📷...");
             }
             fileInput.value = "";
         };
