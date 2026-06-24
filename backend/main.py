@@ -127,6 +127,20 @@ async def upload_receipt(file: UploadFile = File(...), sorteo_nombre: Optional[s
                 'Content-Type': f'multipart/form-data; boundary={boundary}',
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
+            
+            # Autenticación de seguridad para n8n
+            n8n_user = os.getenv("N8N_USER")
+            n8n_password = os.getenv("N8N_PASSWORD")
+            n8n_token = os.getenv("N8N_WEBHOOK_TOKEN")
+            
+            if n8n_user and n8n_password:
+                import base64
+                credentials = f"{n8n_user}:{n8n_password}"
+                encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+                headers['Authorization'] = f"Basic {encoded_credentials}"
+            elif n8n_token:
+                headers['Authorization'] = f"Bearer {n8n_token}"
+
             body = bytearray()
             body.extend(f'--{boundary}\r\n'.encode('utf-8'))
             body.extend(f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'.encode('utf-8'))
